@@ -8,12 +8,12 @@ export default defineConfig({
   testDir: './tests/e2e', workers: 1, timeout: 45000, reporter: 'list',
   forbidOnly: !!env.CI,
   use: {
-    baseURL, viewport: { width: 1440, height: 1050 },
+    baseURL, viewport: { width: 1440, height: 1050 }, screenshot: 'only-on-failure',
     channel: env.CI ? 'chromium' : 'chrome',
     launchOptions: {
       args: ['--enable-unsafe-webgpu', ...(env.CI && process.platform === 'linux' ? [
-        '--enable-features=Vulkan', '--use-angle=vulkan', '--use-vulkan=swiftshader',
-        '--use-webgpu-adapter=swiftshader', '--disable-vulkan-surface',
+        '--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader',
+        '--use-vulkan=swiftshader', '--use-webgpu-adapter=swiftshader',
       ] : [])],
     },
   },

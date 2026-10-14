@@ -163,4 +163,6 @@ document.addEventListener('click',event=>{
 });
 document.addEventListener('keydown',event=>{const b=(event.target as HTMLElement).closest<HTMLElement>('[role="tab"]');if(!b||!['ArrowLeft','ArrowRight','Home','End'].includes(event.key))return;event.preventDefault();const names=['experiment','theory','questions'];let i=names.indexOf(tab);i=event.key==='Home'?0:event.key==='End'?2:(i+(event.key==='ArrowRight'?1:-1)+3)%3;selectTab(names[i]);$(`#tab-${names[i]}`).focus();});
 document.addEventListener('click',event=>{const dialog=$<HTMLDialogElement>('#image-dialog');if(event.target===dialog)dialog.close();});
-window.addEventListener('hashchange',route);window.addEventListener('pagehide',event=>{save(state);if(!event.persisted)visual?.dispose();});route();
+// The browser releases GPU resources on navigation; destroying the device here
+// can reject pending WebGPU error scopes before the document unloads.
+window.addEventListener('hashchange',route);window.addEventListener('pagehide',()=>{save(state);});route();
