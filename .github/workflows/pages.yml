@@ -15,7 +15,7 @@ concurrency:
 jobs:
   check:
     name: Check production build
-    runs-on: ubuntu-latest
+    runs-on: macos-latest
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7
