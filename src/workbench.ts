@@ -3,6 +3,7 @@ import { simulate, format, metal, semiconductor } from './physics';
 import type { Params } from './physics';
 import type { Apparatus } from './storage';
 import type { ApparatusRenderer } from './apparatus-renderer';
+import { scopeScale } from './scope';
 
 export interface BenchState {id:number;params:Params;mode:string;apparatus:Apparatus;playing:boolean}
 export interface Wire {points:[number,number][];color:string;sense?:boolean;only?:'rl'|'rlc';load?:'lamp'|'coil';probe?:'metal'|'semi';cell?:0|1}
@@ -13,7 +14,7 @@ export const benchHints=[
  'Увімкни джерело. Перемикай еталонний і невідомий елементи, рухай контакт до нульового показу.',
  'Увімкни термостат і нагрівач. Ручкою задай температуру, перемикай щупи між зразками. Перед записом дочекайся теплової рівноваги.',
  'Увімкни джерело. Обертай регулятор напруги та натисни на діод, щоб змінити полярність. Читай покази V і A.',
- 'Увімкни осцилограф. Обертай ручки частоти, амплітуди й фази. Перемикач XY показує фігури Ліссажу на екрані приладу.',
+ 'Центр екрана — (0; 0). У розгортці X — час; у XY X та Y — напруги. Масштаб однієї поділки підписаний біля кожної осі.',
  'Увімкни ЛАТР. Обертай його ручку, вилучай конденсатор і вставляй осердя котушки. Спостерігай за амперметром.',
  'Увімкни живлення. Перемикай навантаження між лампами та котушкою, змінюй напругу й порівнюй покази ватметра.',
  'Увімкни джерело AC. Перетягни контакт реохорда до нульового показу. Натисни на досліджуваний конденсатор, щоб замінити його.'
@@ -118,8 +119,12 @@ function diodeBench(s:BenchState){const p=s.params,on=s.apparatus.power&&s.appar
  ${jack(363,325,red)}${jack(449,325,black)}${text(609,386,'Натисни на діод','label')}${text(609,407,'для зміни полярності.','small')}${text(245,463,'Ручка джерела регулює напругу.','small')}`;
 }
 function scopeBench(s:BenchState){const p=s.params,a=s.apparatus;
+ const time=s.mode==='scope',xUnit=time?'мс':'В',xStep=time?scopeScale.millisecondsPerDivision:scopeScale.voltsPerXDivision;
+ const xLabels=[-4,-2,0,2,4].map(i=>text(360+i*24,363,format(i*xStep),'scope-tick','middle')).join('');
+ const yLabels=[-3,-2,-1,0,1,2,3].map(i=>text(224,243-i*23.75,format(i*scopeScale.voltsPerYDivision),'scope-tick','end')).join('');
+ const axes=`<g class="scope-scale" aria-label="Шкала осцилографа"><path d="M 240 240 H 480 M 360 145 V 335 M 476 237 l 4 3 -4 3 M 357 149 l 3 -4 3 4" fill="none" stroke="#89a47b" stroke-width="1.3"/><circle cx="360" cy="240" r="2.3" fill="#a5b695"/>${text(366,252,'0','crt')}${xLabels}${yLabels}${text(240,123,`Y: Uᵧ, В · ${scopeScale.voltsPerYDivision} В/под.`,'scope-caption')}${text(360,383,`X: ${time?'t':'Uₓ'}, ${xUnit} · ${xStep} ${xUnit}/под.`,'scope-caption','middle')}</g>`;
  const grid=Array.from({length:11},(_,i)=>`<path d="M ${240+i*24} 145 V 335" stroke="#3c6948" stroke-width=".7"/>`).join('')+Array.from({length:9},(_,i)=>`<path d="M 240 ${145+i*23.75} H 480" stroke="#3c6948" stroke-width=".7"/>`).join('');
- return `${plate(209,76,568,325,'ЕЛЕКТРОННИЙ ОСЦИЛОГРАФ С 1-1')}<rect x="229" y="133" width="262" height="217" rx="18" fill="#526657" stroke="#93a181" stroke-width="3"/><rect x="239" y="143" width="242" height="193" rx="12" fill="url(#screen)"/>${grid}${text(254,159,a.power?s.mode==='xy'?'XY':'Y(t)':'OFF','crt')}${text(460,325,'0','crt','end')}
+ return `${plate(209,76,568,325,'ЕЛЕКТРОННИЙ ОСЦИЛОГРАФ С 1-1')}<rect x="229" y="133" width="262" height="217" rx="18" fill="#526657" stroke="#93a181" stroke-width="3"/><rect x="239" y="143" width="242" height="193" rx="12" fill="url(#screen)"/>${grid}${axes}${text(254,159,a.power?s.mode==='xy'?'XY':time?'Y(t)':'ЧУТЛИВІСТЬ':'OFF','crt')}
  ${text(538,124,'АМПЛІТУДА','small','middle')}${knob(538,171,'u',p.u,5,'Амплітуда сигналу',24)}${text(652,124,'ФАЗА','small','middle')}${knob(652,171,'phase',p.phase,5,'Фаза сигналу',24)}
  ${button(516,256,84,'Розгортка','scope',s.mode==='scope')}${button(616,256,84,'XY','xy',s.mode==='xy')}${button(516,292,184,'Чутливість','sensitivity',s.mode==='sensitivity')}${power(518,355,a.power)}${jack(667,391,green,true)}${jack(699,391,black)}${text(723,379,'Y / X','small')}
  ${plate(25,298,160,186,'ГЕНЕРАТОР ГЗ-33')}${knob(99,370,'f',p.f,5,'Частота звукового генератора',31)}${text(100,439,'50 … 200 Гц','small','middle')}${jack(184,420,green)}${jack(184,453,black)}`;

@@ -3,6 +3,7 @@ import {Fn,If,attribute,uniform,positionLocal,vec2,vec3,mix,float} from 'three/t
 import {circuitWires} from './workbench';
 import type {BenchState,Wire} from './workbench';
 import {simulate} from './physics';
+import {scopeScale,scopePixelsPerVoltX,scopePixelsPerVoltY,scopeSweepPhasePerHalfWidth} from './scope';
 
 interface Segment {a:[number,number];b:[number,number];phase:number;sense:number;kind:number}
 export class ApparatusRenderer {
@@ -30,17 +31,17 @@ export class ApparatusRenderer {
  }
  private makeScope(){for(let ch=0;ch<2;ch++){
   const mat=new MeshBasicNodeMaterial({side:DoubleSide,color:ch===0?'#67b6a1':'#d4f194'}),mode=this.mode,clock=this.clock,ratio=this.ratio,phase=this.phase,amplitude=this.amplitude;
-  mat.positionNode=Fn(()=>{const theta=positionLocal.x.add(1).mul(Math.PI*2),x=positionLocal.x.mul(115).toVar(),y=float(0).toVar(),width=vec2(0,positionLocal.y.mul(87)).toVar();
-   If(mode.equal(1),()=>{const tx=theta.add(clock.mul(1.2)),ty=theta.mul(ratio).add(phase).add(clock.mul(ratio).mul(1.2));x.assign(tx.sin().mul(98));y.assign(ty.sin().mul(amplitude).mul(87));const tangent=vec2(ty.cos().mul(amplitude).mul(ratio).mul(-87),tx.cos().mul(98));width.assign(tangent.div(tangent.length().max(.0001)).mul(positionLocal.y).mul(87));})
-   .ElseIf(mode.equal(2),()=>{x.assign(positionLocal.x.mul(amplitude).mul(115));y.assign(0);})
-   .Else(()=>{const r=ch===0?float(1):ratio;const phi=ch===0?float(0):phase;const amp=ch===0?float(.5):amplitude;y.assign(theta.mul(r).add(phi).add(clock.mul(r).mul(1.2)).sin().mul(amp).mul(87));});
-   return vec3(x.add(width.x).add(360),y.add(width.y).add(240),float(2+ch));})();
+  mat.positionNode=Fn(()=>{const theta=positionLocal.x.add(1).mul(scopeSweepPhasePerHalfWidth),x=positionLocal.x.mul(scopeScale.width/2).toVar(),y=float(0).toVar(),width=vec2(0,positionLocal.y.mul(87)).toVar();
+   If(mode.equal(1),()=>{const tx=theta.add(clock.mul(1.2)),ty=theta.mul(ratio).add(phase).add(clock.mul(ratio).mul(1.2));x.assign(tx.sin().mul(scopeScale.referenceVolts*scopePixelsPerVoltX));y.assign(ty.sin().mul(amplitude).mul(scopePixelsPerVoltY));const tangent=vec2(ty.cos().mul(amplitude).mul(ratio).mul(scopePixelsPerVoltY),tx.cos().mul(scopeScale.referenceVolts*scopePixelsPerVoltX));width.assign(tangent.div(tangent.length().max(.0001)).mul(positionLocal.y).mul(87));})
+   .ElseIf(mode.equal(2),()=>{x.assign(positionLocal.x.mul(amplitude).mul(scopePixelsPerVoltX));y.assign(0);})
+   .Else(()=>{const r=ch===0?float(1):ratio;const phi=ch===0?float(0):phase;const amp=ch===0?float(scopeScale.referenceVolts):amplitude;const t=theta.mul(r).add(phi).add(clock.mul(r).mul(1.2));y.assign(t.sin().mul(amp).mul(scopePixelsPerVoltY));const tangent=vec2(t.cos().mul(amp).mul(scopePixelsPerVoltY).mul(r).mul(scopeSweepPhasePerHalfWidth),float(scopeScale.width/2));width.assign(tangent.div(tangent.length().max(.0001)).mul(positionLocal.y).mul(87));});
+   return vec3(x.add(width.x).add(scopeScale.centerX),y.negate().add(width.y).add(scopeScale.centerY),float(2+ch));})();
   const mesh=new Mesh(new PlaneGeometry(2,.018,700,1),mat);mesh.frustumCulled=false;this.scene.add(mesh);this.waves.push(mesh);
  }}
  set(state:BenchState){this.state=state;this.dirty=true;const powered=state.apparatus.power&&state.apparatus.connected,reading=simulate(state.id,state.params,state.mode).reading;
   this.sense.value=Math.abs(state.id===2&&state.apparatus.selected===0?state.params.en*state.params.lx/state.params.ln-state.params.en:reading??0);this.ac.value=[6,7,8].includes(state.id)?1:0;this.rl.value=state.mode==='rl'?1:0;this.heater.value=state.apparatus.heating?1:0;this.load.value=state.apparatus.selected;this.probe.value=state.apparatus.probe==='metal'?0:1;
   this.speed.value=state.id===4?(state.params.u<0?.01:Math.min(1,.05+Math.abs(simulate(4,state.params,state.mode).metrics[0].value)/15)):.25;
-  this.ratio.value=(state.params.f??100)/50;this.phase.value=(state.params.phase??45)*Math.PI/180;this.amplitude.value=(state.params.u??3)/5;this.mode.value=state.mode==='xy'?1:state.mode==='sensitivity'?2:0;
+  this.ratio.value=(state.params.f??100)/scopeScale.referenceHz;this.phase.value=(state.params.phase??45)*Math.PI/180;this.amplitude.value=state.params.u??3;this.mode.value=state.mode==='xy'?1:state.mode==='sensitivity'?2:0;
   if(this.particles)this.particles.visible=powered;for(let i=0;i<this.waves.length;i++)this.waves[i].visible=powered&&(i===1||state.mode==='scope');
  }
  private resize(){if(this.dead)return;const w=this.host.clientWidth,h=this.host.clientHeight;if(!w||!h)return;if(this.gpu)this.gpu.setSize(w,h,false);else{const d=Math.min(devicePixelRatio,2);this.canvas.width=w*d;this.canvas.height=h*d;}this.dirty=true;}
@@ -50,8 +51,8 @@ export class ApparatusRenderer {
  private paint(){const ctx=this.ctx;if(!ctx)return;ctx.clearRect(0,0,this.canvas.width,this.canvas.height);const a=this.state.apparatus;if(!a.power||!a.connected)return;ctx.save();ctx.scale(this.canvas.width/800,this.canvas.height/540);ctx.fillStyle='#efe6a0';
   const reading=this.state.id===2&&a.selected===0?this.state.params.en*this.state.params.lx/this.state.params.ln-this.state.params.en:simulate(this.state.id,this.state.params,this.state.mode).reading;
   for(const s of this.segments){if(s.sense&&Math.abs(reading??0)<.001||s.kind===1&&this.state.mode!=='rl'||s.kind===2&&this.state.mode==='rl'||s.kind===3&&!a.heating||s.kind===4&&a.selected!==0||s.kind===5&&a.selected!==1||s.kind===6&&a.probe!=='metal'||s.kind===7&&a.probe!=='semi'||s.kind===8&&a.selected!==0||s.kind===9&&a.selected!==1)continue;const phase=[6,7,8].includes(this.state.id)?Math.sin(this.elapsed*2.4+s.phase*Math.PI*2)*.42+.5:(this.elapsed*this.speed.value+s.phase)%1;const x=s.a[0]+(s.b[0]-s.a[0])*phase,y=s.a[1]+(s.b[1]-s.a[1])*phase;ctx.beginPath();ctx.arc(x,y,2.2,0,Math.PI*2);ctx.fill();}
-  if(this.state.id===5){ctx.save();ctx.beginPath();ctx.rect(240,145,240,190);ctx.clip();const p=this.state.params,mode=this.state.mode,ratio=p.f/50,phi=p.phase*Math.PI/180,amp=p.u/5,clock=this.elapsed*1.2;
-   const channels=mode==='scope'?2:1;for(let ch=0;ch<channels;ch++){ctx.strokeStyle=mode==='scope'&&ch===0?'#67b6a1':'#d4f194';ctx.lineWidth=1.6;ctx.beginPath();for(let i=0;i<=700;i++){const x=-1+i/350,theta=(x+1)*Math.PI*2;let px=360+x*115,py=240;if(mode==='xy'){px=360+Math.sin(theta+clock)*98;py=240+Math.sin(theta*ratio+phi+clock*ratio)*amp*87;}else if(mode==='sensitivity')px=360+x*amp*115;else py=240+Math.sin(theta*(ch?ratio:1)+(ch?phi:0)+clock*(ch?ratio:1))*(ch?amp:.5)*87;i?ctx.lineTo(px,py):ctx.moveTo(px,py);}ctx.stroke();}ctx.restore();}
+  if(this.state.id===5){ctx.save();ctx.beginPath();ctx.rect(240,145,240,190);ctx.clip();const p=this.state.params,mode=this.state.mode,ratio=p.f/scopeScale.referenceHz,phi=p.phase*Math.PI/180,amp=p.u,clock=this.elapsed*1.2;
+   const channels=mode==='scope'?2:1;for(let ch=0;ch<channels;ch++){ctx.strokeStyle=mode==='scope'&&ch===0?'#67b6a1':'#d4f194';ctx.lineWidth=1.6;ctx.beginPath();for(let i=0;i<=700;i++){const x=-1+i/350,theta=(x+1)*scopeSweepPhasePerHalfWidth;let px=360+x*scopeScale.width/2,py=240;if(mode==='xy'){px=360+Math.sin(theta+clock)*scopeScale.referenceVolts*scopePixelsPerVoltX;py=240-Math.sin(theta*ratio+phi+clock*ratio)*amp*scopePixelsPerVoltY;}else if(mode==='sensitivity')px=360+x*amp*scopePixelsPerVoltX;else py=240-Math.sin(theta*(ch?ratio:1)+(ch?phi:0)+clock*(ch?ratio:1))*(ch?amp:scopeScale.referenceVolts)*scopePixelsPerVoltY;i?ctx.lineTo(px,py):ctx.moveTo(px,py);}ctx.stroke();}ctx.restore();}
   ctx.restore();}
  dispose(){this.dead=true;cancelAnimationFrame(this.timer);cancelAnimationFrame(this.resizeTimer);this.observer.disconnect();for(const mesh of [this.particles,...this.waves])if(mesh){mesh.geometry.dispose();(Array.isArray(mesh.material)?mesh.material:[mesh.material]).forEach(m=>m.dispose());}this.gpu?.dispose();this.canvas.remove();}
 }
