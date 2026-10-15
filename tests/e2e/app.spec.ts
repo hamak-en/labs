@@ -35,6 +35,30 @@ test('drawn diode polarity and RL capacitor/core controls change physical readin
  await page.goto('./#/lab/4');await power(page);await page.locator('[data-bench-action="polarity"]').click();await expect(page.locator('#number-u')).toHaveValue('-0.4');await expect(page.locator('.bench-svg')).toContainText('Зворотне зміщення');
  await page.goto('./#/lab/6');await power(page);await page.locator('.bench-viewport').screenshot({path:'test-results/rlc-wiring.png'});await page.locator('[data-bench-action="capacitor"]').click();await page.locator('.bench-viewport').screenshot({path:'test-results/rl-wiring.png'});await page.locator('[data-action="record"]').click();await expect(page.locator('[data-result="l"]')).toHaveText('107,7');await page.locator('[data-bench-action="core"]').click();await expect(page.locator('#number-l')).toHaveValue('193.86');await page.locator('[data-bench-action="capacitor"]').click();await expect(page.locator('[data-result="l"]')).toHaveText('107,7');
 });
+test('AC ammeter keeps its 0.5 A scale when the circuit or current changes',async({page})=>{
+ await page.goto('./#/lab/6');await power(page);
+ const ammeter=page.locator('.bench-meter[aria-label="АМПЕРМЕТР A"]'),scale=ammeter.locator('.bench-scale');
+ const fixedScale=['0','0,25','0,5'];
+ await expect(scale).toHaveText(fixedScale);
+ await page.locator('#number-u').fill('100');await page.locator('#number-r').fill('200');
+ await page.locator('[data-bench-action="capacitor"]').click();
+ await expect(scale).toHaveText(fixedScale);
+ await expect(ammeter.locator('.bench-readout')).toHaveText('0,493 А');
+ await page.locator('[data-bench-action="core"]').click();
+ await expect(ammeter.locator('.bench-readout')).toHaveText('0,4783 А');
+ await expect(scale).toHaveText(fixedScale);
+ await page.locator('.bench-viewport').screenshot({path:'test-results/ammeter-fixed-scale.png'});
+ await page.locator('#number-r').fill('30');
+ await expect(ammeter.locator('.bench-overrange')).toHaveText('Поза шкалою');
+ await expect(scale).toHaveText(fixedScale);
+ await ammeter.locator('[data-bench-action="connection"]').click();
+ await expect(ammeter.locator('.bench-overrange')).toHaveCount(0);
+ await expect(scale).toHaveText(fixedScale);
+ await ammeter.locator('[data-bench-action="connection"]').click();
+ await page.locator('[data-bench-action="capacitor"]').click();
+ await expect(scale).toHaveText(fixedScale);
+ await power(page);await expect(scale).toHaveText(fixedScale);
+});
 test('WebGPU oscilloscope lives inside the instrument, XY and knobs respond',async({page})=>{
  const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push(m.text());});
  await page.goto('./#/lab/5');await expect(page.locator('#bench')).toHaveAttribute('data-backend','WebGPU',{timeout:20000});await power(page);await expect(page.locator('.scope-scale')).toContainText('X: t, мс · 2 мс/под.');await expect(page.locator('.scope-scale')).toContainText('Y: Uᵧ, В · 2 В/под.');await page.locator('[data-bench-action="xy"]').click();await page.getByRole('slider',{name:'Частота звукового генератора'}).press('End');await expect(page.locator('#number-f')).toHaveValue('200');await expect(page.locator('[data-bench-action="xy"]')).toHaveAttribute('aria-pressed','true');await expect(page.locator('.scope-scale')).toContainText('X: Uₓ, В · 1 В/под.');
