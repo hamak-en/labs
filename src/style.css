@@ -66,3 +66,45 @@ main{grid-area:content;height:100%;min-height:0;min-width:0;width:100%;overflow-
 
 .uncertainty-help .uncertainty-source{font-size:11px;color:#7c866e}
 .uncertainty-help .uncertainty-journal{padding:12px 14px;background:#f6f8ef;border-radius:7px}
+
+.equipment-guide{padding:26px 29px;border:1px solid var(--line);background:#fff;border-radius:12px;min-width:0}
+.equipment-heading{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.equipment-heading .eyebrow{font-size:9px;margin-bottom:10px}
+.equipment-heading h2{font-size:27px}
+.equipment-guide p,.equipment-guide dd{font-size:12px;line-height:1.85;color:#627352}
+.equipment-intro{margin:14px 0 22px;max-width:850px}
+.equipment-list{display:flex;flex-direction:column;list-style:none;padding:0;margin:0}
+.equipment-item{display:grid;grid-template-columns:220px minmax(0,1fr);align-items:start;gap:28px;min-width:0;border-top:1px solid var(--line);padding:24px 0}
+.equipment-picture{min-width:0;display:flex;justify-content:center;padding-top:4px}
+.equipment-illustration{display:block;width:100%;max-width:260px;height:auto;font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+.equipment-copy{min-width:0}
+.equipment-item h3,.equipment-controls h3{font-size:16px;line-height:1.5;margin:0}
+.equipment-copy>p{margin:6px 0 14px}
+.equipment-item dl{display:grid;grid-template-columns:105px minmax(0,1fr);gap:10px 14px;margin:0}
+.equipment-item dt{font-size:10px;line-height:2.2;color:#7d886c}
+.equipment-item dd{margin:0;overflow-wrap:break-word}
+.equipment-controls{border-top:1px solid var(--line);padding-top:20px}
+.equipment-controls>p{margin:8px 0 16px}
+.equipment-controls .table-scroll{max-height:none}
+.equipment-controls table{white-space:normal;min-width:0}
+.equipment-controls tbody th{font-family:inherit;font-size:12px;color:var(--ink);width:55%}
+.equipment-controls td{font-size:12px;vertical-align:top}
+.equipment-limit-note{display:block;font-size:10px;line-height:1.7;color:#7d886c;margin-top:5px}
+.equipment-accessories{border-top:1px solid var(--line);padding-top:18px;margin:20px 0 16px}
+.theory-equipment-link{margin-top:20px}
+@media(min-width:701px) and (max-width:1100px){.equipment-item{grid-template-columns:160px minmax(0,1fr);gap:20px}.equipment-item dl{grid-template-columns:90px minmax(0,1fr);gap:10px}}
+@media(max-width:700px){
+ .tabs{gap:16px}
+ .equipment-guide{padding:22px 18px}
+ .equipment-heading h2{font-size:24px}
+ .equipment-item{grid-template-columns:minmax(0,1fr);gap:14px;padding:20px 0}
+ .equipment-picture{padding-top:0}
+ .equipment-illustration{max-width:200px}
+ .equipment-item dl{grid-template-columns:1fr;gap:3px}
+ .equipment-item dd{margin-bottom:10px}
+ .equipment-item dd:last-child{margin-bottom:0}
+ .equipment-item dt{font-weight:600}
+ .equipment-controls th,.equipment-controls td{padding:10px 6px}
+ .equipment-controls tbody th{width:48%;font-size:11px}
+ .equipment-controls td{font-size:11px}
+}
