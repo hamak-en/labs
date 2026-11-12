@@ -12,6 +12,7 @@ import { Workbench } from './workbench';
 import type { BenchState } from './workbench';
 import { restore, save, downloadCSV, freshApparatus } from './storage';
 import type { Measurement } from './storage';
+import { applyVariant, validVariant, variantNumbers, variantLabel, hasVariants } from './variants';
 
 const $=<T extends HTMLElement=HTMLElement>(s:string)=>document.querySelector<T>(s)!;
 const asset=(path:string)=>import.meta.env.BASE_URL+path;
@@ -34,7 +35,7 @@ function render(){
  <main id="workspace" tabindex="-1"><header class="topbar"><div class="tabs" role="tablist" aria-label="Розділи лабораторної"><button id="tab-experiment" role="tab" aria-selected="true" aria-controls="panel-experiment" data-tab="experiment">Експеримент<span>01</span></button><button id="tab-theory" role="tab" aria-selected="false" aria-controls="panel-theory" tabindex="-1" data-tab="theory">Теорія<span>02</span></button><button id="tab-questions" role="tab" aria-selected="false" aria-controls="panel-questions" tabindex="-1" data-tab="questions">Контрольні питання<span>03</span></button><button id="tab-equipment" role="tab" aria-selected="false" aria-controls="panel-equipment" tabindex="-1" data-tab="equipment">Обладнання<span>04</span></button></div><div class="top-actions"><a class="source-link" href="${asset('Електрика.%20Лабораторні%20роботи.pdf')}" target="_blank" rel="noopener">Методичка <span>↗</span></a><button id="menu" class="menu-button" aria-expanded="false" aria-controls="sidebar">Роботи ☰</button></div></header><div class="content-body"><h1 class="sr-only">${esc(lab.short)}</h1>
  <section id="panel-experiment" role="tabpanel" aria-labelledby="tab-experiment"><div class="experiment-grid">
  <section class="apparatus-card" aria-label="Інтерактивна лабораторна установка"><p class="bench-pan-hint">На телефоні посунь стенд убік, щоб побачити всі прилади.</p><div class="bench-viewport"><div id="bench" class="bench-host" data-backend="loading"></div></div></section>
- <section class="controls-card"><div class="section-title"><h2>Параметри досліду</h2><button data-action="reset-params" class="text-button">Скинути ↺</button></div><p class="muted small">Перетягни ручку на стенді або введи значення.</p><div class="controls">${lab.fields.filter(f=>!f.hidden).map(f=>`<div class="control" data-control="${f.key}" title="${esc(limitNote(lab.id,f.key))}"><label for="number-${f.key}">${esc(f.label)}<span>${esc(f.unit)}</span></label><div class="control-inputs">${f.choices?`<select id="number-${f.key}" data-param="${f.key}" aria-label="${esc(f.label)}, ${esc(f.unit)}">${f.choices.map(value=>`<option value="${value}" ${s.params[f.key]===value?'selected':''}>${format(value)} ${esc(f.unit)}</option>`).join('')}</select>`:`<input id="range-${f.key}" type="range" data-param="${f.key}" min="${f.min}" max="${f.max}" step="${f.step}" value="${s.params[f.key]}" aria-label="${esc(f.label)}, повзунок"><input id="number-${f.key}" type="number" inputmode="decimal" data-param="${f.key}" min="${f.min}" max="${f.max}" step="${f.discrete?f.step:'any'}" value="${s.params[f.key]}" aria-label="${esc(f.label)}, ${esc(f.unit)}">`}</div></div>`).join('')}</div><p id="param-error" class="error-message" role="status" hidden></p>
+ <section class="controls-card"><div class="section-title"><h2>Параметри досліду</h2><button data-action="reset-params" class="text-button">Скинути ↺</button></div><p class="muted small">Перетягни ручку на стенді або введи значення.</p>${hasVariants(lab.id)?`<div class="variant-control"><label for="lab-variant">Варіант досліду</label><select id="lab-variant">${!validVariant(s.variant)?'<option value="" selected disabled>Попередня установка</option>':''}${variantNumbers.map(v=>`<option value="${v}" ${s.variant===v?'selected':''}>${variantLabel(v)}</option>`).join('')}</select></div>`:''}<div class="controls">${lab.fields.filter(f=>!f.hidden).map(f=>`<div class="control" data-control="${f.key}" title="${esc(limitNote(lab.id,f.key))}"><label for="number-${f.key}">${esc(f.label)}<span>${esc(f.unit)}</span></label><div class="control-inputs">${f.choices?`<select id="number-${f.key}" data-param="${f.key}" aria-label="${esc(f.label)}, ${esc(f.unit)}">${f.choices.map(value=>`<option value="${value}" ${s.params[f.key]===value?'selected':''}>${format(value)} ${esc(f.unit)}</option>`).join('')}</select>`:`<input id="range-${f.key}" type="range" data-param="${f.key}" min="${f.min}" max="${f.max}" step="${f.step}" value="${s.params[f.key]}" aria-label="${esc(f.label)}, повзунок"><input id="number-${f.key}" type="number" inputmode="decimal" data-param="${f.key}" min="${f.min}" max="${f.max}" step="${f.discrete?f.step:'any'}" value="${s.params[f.key]}" aria-label="${esc(f.label)}, ${esc(f.unit)}">`}</div></div>`).join('')}</div><p id="param-error" class="error-message" role="status" hidden></p>
  ${lab.id===7?'<div class="load-presets"><button data-preset="lamp">Лампи</button><button data-preset="coil">Котушка</button></div>':''}
  ${lab.id===5?'<div class="load-presets"><button data-frequency="50">1:1</button><button data-frequency="100">1:2</button><button data-frequency="150">1:3</button><button data-frequency="200">1:4</button></div>':''}
  <div class="formula-card"><span>КЛЮЧОВА ФОРМУЛА</span>${renderFormulas(lab.formula)}</div><button class="primary-button wide record" data-action="record">Записати покази приладів <span>＋</span></button></section>
@@ -68,11 +69,11 @@ function benchAction(action:string){
  else if(action==='probe-semi')a.probe='semi';
  else if(action==='cell-toggle')a.selected=a.selected===0?1:0;else if(action==='cell-normal')a.selected=0;else if(action==='cell-unknown')a.selected=1;
  else if(lab.id===1&&action.startsWith('bridge-')){const mode=action.slice(7);if(bridgeModes.includes(mode as typeof bridgeModes[number]))current().mode=mode;}
- else if(action==='sample'){if(lab.id===8){p.limit=300;a.selected=a.selected===0?1:0;p.cx=a.selected===0?3:5;}}
+ else if(action==='sample'){if(lab.id===8){p.limit=300;a.selected=a.selected===0?1:0;if(validVariant(current().variant))applyVariant(lab.id,current().variant!,p,a);else p.cx=a.selected===0?3:5;}}
  else if(action==='polarity')a.selected=a.selected===0?1:0;
  else if(action==='capacitor')current().mode=current().mode==='rl'?'rlc':'rl';
- else if(action==='core'){a.core=!a.core;if(lab.id===6)p.l=Math.min(1000,Number((p.l*(a.core?1.8:1/1.8)).toFixed(4)));}
- else if(action==='load'){a.selected=a.selected===0?1:0;p.phase=a.selected===0?0:60;}
+ else if(action==='core'){a.core=!a.core;if(lab.id===6){if(validVariant(current().variant))applyVariant(lab.id,current().variant!,p,a);else p.l=Math.min(1000,Number((p.l*(a.core?1.8:1/1.8)).toFixed(4)));}}
+ else if(action==='load'){a.selected=a.selected===0?1:0;if(validVariant(current().variant))applyVariant(7,current().variant!,p,a);else p.phase=a.selected===0?0:60;}
  else if(['scope','xy','sensitivity'].includes(action))current().mode=action;
  syncParams();persist();updateModel();
 }
@@ -93,7 +94,9 @@ function updateModel(){
  const record=$<HTMLButtonElement>('[data-action="record"]');record.disabled=Boolean(reason);record.title=reason;
  visual?.set(benchState());
 }
-function measurementLabel(m:Measurement){return `${m.source==='demo'?'Модель':'Власні'}${lab.id===1?' · '+bridgeModeLabel(m.mode):lab.id===6?' · '+m.mode.toUpperCase():''}`;}
+function specimenLabel(specimen:string|undefined){return ({air:'Без осердя',core:'З осердям',lamp:'Лампи',coil:'Котушка',c1:'C₁',c2:'C₂'} as Record<string,string>)[specimen??'']??'';}
+function activeSpecimen(){const a=current().apparatus;return lab.id===6?a.core?'core':'air':lab.id===7?a.selected===0?'lamp':'coil':lab.id===8?a.selected===0?'c1':'c2':undefined;}
+function measurementLabel(m:Measurement){const tag=lab.id===5?(validVariant(m.variant)?'Попередній варіант '+m.variant:''):(validVariant(m.variant)?'В'+m.variant:'Попередні');return `${m.source==='demo'?'Модель':'Власні'}${tag?' · '+tag:''}${lab.id===1?' · '+bridgeModeLabel(m.mode):lab.id===6?' · '+m.mode.toUpperCase():''}${m.specimen?' · '+specimenLabel(m.specimen):''}`;}
 function renderBridgeSummary(valid:Measurement[],total:number){
  const groups=new Map<string,{mean:number;error:number;count:number}>();
  for(const mode of bridgeModes){const results=valid.filter(m=>m.mode===mode).map(m=>rowResult(m).result);if(results.length)groups.set(mode,{mean:results.reduce((sum,r)=>sum+r.rx,0)/results.length,error:results.reduce((sum,r)=>sum+r.error,0)/results.length,count:results.length});}
@@ -102,7 +105,7 @@ function renderBridgeSummary(valid:Measurement[],total:number){
  if(a&&b)for(const mode of ['series','parallel'] as const){const actual=groups.get(mode);if(!actual)continue;const expected=combineResistances(a.mean,b.mean,mode),error=combinedResistanceError(a.mean,b.mean,a.error,b.error,mode),difference=Math.abs(actual.mean-expected);summaries.push(`<div class="fit-results"><span>${bridgeModeLabel(mode)} — порівняння за виміряними R₁ і R₂</span><strong>За формулою: ${format(expected)} ± ${format(error)} Ом</strong><span>Різниця: ${format(difference)} Ом. ${difference<=error+actual.error?'У межах сумарної граничної похибки.':'Різниця перевищує сумарну граничну похибку.'}</span></div>`);}
  const legacy=valid.filter(m=>!bridgeModes.includes(m.mode as typeof bridgeModes[number])).length;
  if(legacy)summaries.push(`<p class="summary-note">${legacy} попередніх вимірів без позначення з’єднання збережено в таблиці; вони не об’єднуються із новими серіями.</p>`);
- $('#table-summary').innerHTML=`<p class="small muted">Коректних вимірів: ${valid.length} / ${total}. Середні обчислюються окремо для кожного з’єднання.</p>${summaries.join('')}`;
+ return `<p class="small muted">Коректних вимірів: ${valid.length} / ${total}. Середні обчислюються окремо для кожного з’єднання.</p>${summaries.join('')}`;
 }
 function rowResult(m:Measurement):{result:Record<string,number>;error?:string}{try{return {result:calculateRow(lab.id,m.row,m.mode)};}catch(e){return {result:{},error:e instanceof Error?e.message:'Некоректні дані'};}}
 function renderRows(){
@@ -121,11 +124,11 @@ function updateRow(element:HTMLTableRowElement,m:Measurement){
  if(error){if(!errorRow){errorRow=document.createElement('tr');errorRow.className='row-error';errorRow.dataset.errorFor=String(m.id);element.after(errorRow);}errorRow.innerHTML=`<td colspan="${lab.columns.length+lab.outputs.length+3}">${esc(error)}</td>`;}else errorRow?.remove();
  updateSummary();if(visual)updateModel();
 }
-function updateSummary(){
- const rows=current().rows, valid=rows.filter(m=>!rowResult(m).error);const host=$('#table-summary');
- if(!valid.length){host.innerHTML='';return;}
- if(lab.id===1){renderBridgeSummary(valid,rows.length);return;}
- if(lab.id===3){try{const f=thermalFit(valid.map(m=>m.row));host.innerHTML=`<div class="fit-results"><span>Лінійна апроксимація · ${valid.length} точок</span><strong>α = ${format(f.alpha,6)} К⁻¹</strong><strong>ΔW = ${format(f.gap)} еВ</strong><strong>R₀ = ${format(f.r0)} Ом</strong></div>`;}catch(e){host.innerHTML=`<p class="summary-note">${esc((e as Error).message)}</p>`;}return;}
+function summaryForRows(rows:Measurement[]):string{
+ const valid=rows.filter(m=>!rowResult(m).error);
+ if(!valid.length)return '';
+ if(lab.id===1)return renderBridgeSummary(valid,rows.length);
+ if(lab.id===3){try{const f=thermalFit(valid.map(m=>m.row));return `<div class="fit-results"><span>Лінійна апроксимація · ${valid.length} точок</span><strong>α = ${format(f.alpha,6)} К⁻¹</strong><strong>ΔW = ${format(f.gap)} еВ</strong><strong>R₀ = ${format(f.r0)} Ом</strong></div>`;}catch(e){return `<p class="summary-note">${esc((e as Error).message)}</p>`;}}
  const first=lab.outputs[0];const values=valid.map(m=>rowResult(m).result[first.key]).filter(Number.isFinite);
  const mean=values.reduce((s,v)=>s+v,0)/values.length;
  let rectification='';
@@ -133,7 +136,12 @@ function updateSummary(){
   const pairs=valid.filter(m=>m.row.u!>0).map(m=>{const reverse=valid.find(n=>n.row.u!<0&&Math.abs(n.row.u!+m.row.u!)<1e-6);return reverse?`K(${format(m.row.u!)} В) = ${format(Math.abs(m.row.i!/reverse.row.i!))}`:'';}).filter(Boolean);
   if(pairs.length)rectification=`<div class="fit-results"><span>Коефіцієнт випрямлення K = |Iпр| / |Iзв| при однаковому |U|</span>${pairs.map(p=>`<strong>${p}</strong>`).join('')}</div>`;
  }
- host.innerHTML=`<div class="fit-results"><span>Коректних вимірів: ${valid.length} / ${rows.length}</span><strong>Середнє ${first.label} = ${format(mean)} ${first.unit}</strong>${lab.id===4?'<span>Середнє R для різних напруг має лише описовий зміст.</span>':''}</div>${rectification}`;
+ return `<div class="fit-results"><span>Коректних вимірів: ${valid.length} / ${rows.length}</span><strong>Середнє ${first.label} = ${format(mean)} ${first.unit}</strong>${lab.id===4?'<span>Середнє R для різних напруг має лише описовий зміст.</span>':''}</div>${rectification}`;
+}
+function updateSummary(){
+ const groups=new Map<string,Measurement[]>();
+ for(const m of current().rows){const key=JSON.stringify([m.variant??null,[1,4].includes(lab.id)?null:m.mode,m.specimen??null]);const group=groups.get(key)??[];group.push(m);groups.set(key,group);}
+ $('#table-summary').innerHTML=[...groups.values()].map(rows=>{const summary=summaryForRows(rows);if(!summary)return '';const m=rows[0],label=`${lab.id===5?(validVariant(m.variant)?'Попередній варіант '+m.variant:'Результати'):(validVariant(m.variant)?variantLabel(m.variant):'Попередні вимірювання')}${lab.id===6?' · '+m.mode.toUpperCase():''}${m.specimen?' · '+specimenLabel(m.specimen):''}`;return `<section class="measurement-series"><h3>${esc(label)}</h3>${summary}</section>`;}).join('');
 }
 function updateConnections(){if(![1,8].includes(lab.id))return;const a=$<HTMLInputElement>('#combine-a').valueAsNumber,b=$<HTMLInputElement>('#combine-b').valueAsNumber;
  if(!Number.isFinite(a)||!Number.isFinite(b)||a<=0||b<=0){$('#combine-result').textContent='Введи два додатні значення.';return;}
@@ -141,7 +149,7 @@ function updateConnections(){if(![1,8].includes(lab.id))return;const a=$<HTMLInp
  $('#combine-result').innerHTML=`<span>Послідовно <strong>${format(series)} ${unit}</strong></span><span>Паралельно <strong>${format(parallel)} ${unit}</strong></span>`;
 }
 function syncParams(){for(const f of lab.fields)for(const el of document.querySelectorAll<HTMLInputElement|HTMLSelectElement>(`[data-param="${f.key}"]`)){el.value=String(current().params[f.key]);el.classList.remove('invalid');}$('#param-error').hidden=true;}
-function addMeasurement(row:Row,kind:'demo'|'manual',mode=current().mode){if(current().rows.length>=200){toast('Максимум 200 вимірів на роботу. Експортуй журнал і видали непотрібні рядки.');return;}current().rows.push({id:nextId++,row:{...row},mode,source:kind});persist();renderRows();}
+function addMeasurement(row:Row,kind:'demo'|'manual',mode=current().mode){if(current().rows.length>=200){toast('Максимум 200 вимірів на роботу. Експортуй журнал і видали непотрібні рядки.');return;}current().rows.push({id:nextId++,row:{...row},mode,source:kind,variant:current().variant,specimen:activeSpecimen()});persist();renderRows();}
 function selectTab(next:string){
  if(!tabNames.some(name=>name===next))return;
  tab=next;for(const name of tabNames){const active=next===name;$(`#panel-${name}`).hidden=!active;const button=$(`#tab-${name}`);button.setAttribute('aria-selected',String(active));button.tabIndex=active?0:-1;}
@@ -149,12 +157,14 @@ function selectTab(next:string){
  $('#workspace').scrollTop=0;
 }
 function exportRows(){const rows=current().rows;if(!rows.length){toast('Спочатку додай хоча б один вимір.');return;}
- const headers=['№','Джерело',lab.id===1?'З’єднання':'Режим',...lab.columns.map(c=>`${c.label}${c.unit?', '+c.unit:''}`),...lab.outputs.map(c=>`${c.label}${c.unit?', '+c.unit:''}`),'Помилка'];
- const cells=rows.map((m,i)=>{const {result,error}=rowResult(m);return [i+1,m.source==='demo'?'Модель':'Власні',lab.id===1?bridgeModeLabel(m.mode):m.mode,...lab.columns.map(c=>m.row[c.key]===null?'':String(m.row[c.key]??'')),...lab.outputs.map(c=>Number.isFinite(result[c.key])?String(result[c.key]):''),error??''];});
+ const includeVariant=hasVariants(lab.id)||rows.some(m=>validVariant(m.variant));
+ const headers=['№','Джерело',...(includeVariant?['Варіант']:[]),lab.id===1?'З’єднання':'Режим','Зразок',...lab.columns.map(c=>`${c.label}${c.unit?', '+c.unit:''}`),...lab.outputs.map(c=>`${c.label}${c.unit?', '+c.unit:''}`),'Помилка'];
+ const cells=rows.map((m,i)=>{const {result,error}=rowResult(m);return [i+1,m.source==='demo'?'Модель':'Власні',...(includeVariant?[validVariant(m.variant)?m.variant:lab.id===5?'Без варіанта':'Попередні']:[]),lab.id===1?bridgeModeLabel(m.mode):m.mode,specimenLabel(m.specimen),...lab.columns.map(c=>m.row[c.key]===null?'':String(m.row[c.key]??'')),...lab.outputs.map(c=>Number.isFinite(result[c.key])?String(result[c.key]):''),error??''];});
  downloadCSV(`lab_${lab.id}-measurements.csv`,headers,cells);toast('CSV експортовано з одиницями та позначенням демонстраційних даних.');
 }
 document.addEventListener('input',event=>{
  const el=event.target as HTMLInputElement|HTMLSelectElement;
+ if(el.id==='lab-variant'){const v=Number(el.value);if(!hasVariants(lab.id)||!validVariant(v))return;current().variant=v;applyVariant(lab.id,v,current().params,current().apparatus);if(lab.id===8)current().params.limit=300;syncParams();persist();renderRows();return;}
  if(el.dataset.param){const f=lab.fields.find(f=>f.key===el.dataset.param)!;const v=el.value===''?NaN:Number(el.value),max=lab.id===7&&f.key==='i'?currentLimit():f.max;
   if(!Number.isFinite(v)||v<f.min||v>max||(f.choices&&!f.choices.includes(v))||(f.discrete&&Math.abs((v-f.min)/f.step-Math.round((v-f.min)/f.step))>1e-8)){el.classList.add('invalid');const e=$('#param-error');e.textContent=f.choices?`${f.label}: обери ${f.choices.map(value=>format(value)).join(', ')} ${f.unit}.`:`${f.label}: введи число від ${f.min} до ${max} ${f.unit}${f.discrete?` з кроком ${format(f.step)} ${f.unit}`:''}.`;e.hidden=false;return;}
   el.classList.remove('invalid');$('#param-error').hidden=true;current().params[f.key]=v;for(const other of document.querySelectorAll<HTMLInputElement|HTMLSelectElement>(`[data-param="${f.key}"]`))if(other!==el)other.value=String(v);persist();updateModel();
@@ -166,13 +176,13 @@ document.addEventListener('click',event=>{
  if(b.id==='menu'){$('#sidebar').classList.toggle('open');b.setAttribute('aria-expanded',String($('#sidebar').classList.contains('open')));return;}
  if(b.dataset.tab){selectTab(b.dataset.tab);if(b.getAttribute('role')!=='tab')$(`#tab-${b.dataset.tab}`).focus();return;}
  if(b.dataset.mode){current().mode=b.dataset.mode;if(lab.id===4)current().apparatus.selected=(current().params.u<0)!==(b.dataset.mode==='reverse')?1:0;persist();updateModel();return;}
- if(b.dataset.preset){current().apparatus.selected=b.dataset.preset==='lamp'?0:1;current().params.phase=b.dataset.preset==='lamp'?0:60;syncParams();persist();updateModel();return;}
+ if(b.dataset.preset){current().apparatus.selected=b.dataset.preset==='lamp'?0:1;if(validVariant(current().variant))applyVariant(7,current().variant!,current().params,current().apparatus);else current().params.phase=b.dataset.preset==='lamp'?0:60;syncParams();persist();updateModel();return;}
  if(b.dataset.frequency){current().params.f=Number(b.dataset.frequency);current().mode='xy';syncParams();persist();updateModel();return;}
  if(b.dataset.delete){current().rows=current().rows.filter(m=>m.id!==Number(b.dataset.delete));persist();renderRows();return;}
  if(b.dataset.image){const f=source[lab.id-1].figures[Number(b.dataset.image)];const d=$<HTMLDialogElement>('#image-dialog');d.querySelector('img')!.src=asset(f.url);d.querySelector('img')!.alt=f.alt;d.querySelector('p')!.textContent=f.alt;d.showModal();return;}
  if(b.classList.contains('dialog-close')){$<HTMLDialogElement>('#image-dialog').close();return;}
  switch(b.dataset.action){
-  case 'reset-params':current().apparatus=freshApparatus(lab.id);current().params=Object.fromEntries(lab.fields.map(f=>[f.key,f.value]));syncParams();persist();updateModel();break;
+  case 'reset-params':{const s=current();s.apparatus=freshApparatus(lab.id);s.params=Object.fromEntries(lab.fields.map(f=>[f.key,f.value]));s.variant=hasVariants(lab.id)?s.variant??1:undefined;if(validVariant(s.variant)){applyVariant(lab.id,s.variant,s.params,s.apparatus);$<HTMLSelectElement>('#lab-variant').value=String(s.variant);}syncParams();persist();updateModel();break;}
   case 'record':if(!$<HTMLButtonElement>('[data-action="record"]').disabled){addMeasurement(activeModel().measurement,'demo');toast('Покази приладів додано до журналу.');}break;
   case 'add-row':addMeasurement(Object.fromEntries(lab.columns.map(c=>[c.key,lab.id===1&&['dl1','dL'].includes(c.key)?.1:null])),'manual');{const rows=document.querySelectorAll<HTMLTableRowElement>('tr[data-row]');rows[rows.length-1]?.querySelector('input')?.focus();}break;
   case 'export':exportRows();break;

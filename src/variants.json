@@ -1,0 +1,58 @@
+{
+  "1": [
+    {"rx":750,"rx2":1275}, {"rx":560,"rx2":910},
+    {"rx":820,"rx2":1500}, {"rx":1000,"rx2":1800},
+    {"rx":1200,"rx2":2200}, {"rx":1500,"rx2":2700},
+    {"rx":1800,"rx2":3300}, {"rx":2200,"rx2":3900},
+    {"rx":2700,"rx2":4700}, {"rx":3300,"rx2":5600}
+  ],
+  "2": [
+    {"ex":1.2}, {"ex":0.72}, {"ex":0.84}, {"ex":0.96}, {"ex":1.08},
+    {"ex":1.14}, {"ex":1.26}, {"ex":1.32}, {"ex":1.38}, {"ex":1.44}
+  ],
+  "3": [
+    {"r0":22,"alpha":0.004,"gap":0.4,"rs30":1000},
+    {"r0":18,"alpha":0.0032,"gap":0.25,"rs30":600},
+    {"r0":20,"alpha":0.0034,"gap":0.3,"rs30":750},
+    {"r0":24,"alpha":0.0036,"gap":0.35,"rs30":850},
+    {"r0":26,"alpha":0.0038,"gap":0.45,"rs30":1100},
+    {"r0":28,"alpha":0.0042,"gap":0.5,"rs30":1200},
+    {"r0":30,"alpha":0.0044,"gap":0.55,"rs30":1300},
+    {"r0":32,"alpha":0.0046,"gap":0.6,"rs30":1400},
+    {"r0":34,"alpha":0.0048,"gap":0.65,"rs30":1500},
+    {"r0":36,"alpha":0.005,"gap":0.7,"rs30":1600}
+  ],
+  "4": [
+    {"isMicroamps":0.05,"thermalVoltage":0.052},
+    {"isMicroamps":0.025,"thermalVoltage":0.046},
+    {"isMicroamps":0.03,"thermalVoltage":0.048},
+    {"isMicroamps":0.035,"thermalVoltage":0.05},
+    {"isMicroamps":0.04,"thermalVoltage":0.054},
+    {"isMicroamps":0.06,"thermalVoltage":0.056},
+    {"isMicroamps":0.07,"thermalVoltage":0.058},
+    {"isMicroamps":0.08,"thermalVoltage":0.06},
+    {"isMicroamps":0.09,"thermalVoltage":0.062},
+    {"isMicroamps":0.1,"thermalVoltage":0.064}
+  ],
+  "6": [
+    {"l":107.7,"lCore":193.86}, {"l":85,"lCore":153},
+    {"l":95,"lCore":171}, {"l":120,"lCore":216},
+    {"l":135,"lCore":243}, {"l":150,"lCore":270},
+    {"l":175,"lCore":315}, {"l":200,"lCore":360},
+    {"l":230,"lCore":414}, {"l":260,"lCore":468}
+  ],
+  "7": [
+    {"lampPhase":0,"coilPhase":60}, {"lampPhase":0,"coilPhase":35},
+    {"lampPhase":0,"coilPhase":40}, {"lampPhase":0,"coilPhase":45},
+    {"lampPhase":0,"coilPhase":50}, {"lampPhase":0,"coilPhase":55},
+    {"lampPhase":0,"coilPhase":65}, {"lampPhase":0,"coilPhase":70},
+    {"lampPhase":0,"coilPhase":75}, {"lampPhase":0,"coilPhase":80}
+  ],
+  "8": [
+    {"cx1":3,"cx2":5}, {"cx1":0.5,"cx2":1},
+    {"cx1":0.8,"cx2":2}, {"cx1":1,"cx2":3.3},
+    {"cx1":2,"cx2":3.6}, {"cx1":3.3,"cx2":4},
+    {"cx1":3.6,"cx2":5.6}, {"cx1":4,"cx2":6.8},
+    {"cx1":5.6,"cx2":8}, {"cx1":7,"cx2":10}
+  ]
+}

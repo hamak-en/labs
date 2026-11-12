@@ -92,6 +92,11 @@ main{grid-area:content;height:100%;min-height:0;min-width:0;width:100%;overflow-
 .equipment-limit-note{display:block;font-size:10px;line-height:1.7;color:#7d886c;margin-top:5px}
 .equipment-accessories{border-top:1px solid var(--line);padding-top:18px;margin:20px 0 16px}
 .theory-equipment-link{margin-top:20px}
+.variant-control{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid var(--line)}
+.variant-control label{font-size:11px}
+.variant-control select{min-width:0;max-width:65%;border:1px solid var(--line);border-radius:6px;padding:7px;background:#f7f8f2;color:var(--ink);font:inherit;font-size:11px}
+.measurement-series{margin-top:18px;padding-top:14px;border-top:1px solid var(--line)}
+.measurement-series h3{font-size:12px;line-height:1.6;margin:0}
 @media(min-width:701px) and (max-width:1100px){.equipment-item{grid-template-columns:160px minmax(0,1fr);gap:20px}.equipment-item dl{grid-template-columns:90px minmax(0,1fr);gap:10px}}
 @media(max-width:700px){
  .tabs{gap:16px}

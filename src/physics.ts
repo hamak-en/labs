@@ -1,11 +1,12 @@
+import {tubeSensitivity} from './scope';
 export type Params = Record<string, number>;
 export type Row = Record<string, number | null>;
 export interface Metric { label: string; value: number; unit: string; detail?: string }
 const k=8.617333262e-5;
 const rad=(v:number)=>v*Math.PI/180;
 export function metal(t:number,r0:number,alpha:number){ return r0*(1+alpha*t); }
-export function semiconductor(t:number,gap:number){ return 1000*Math.exp(gap/(2*k)*(1/(t+273.15)-1/303.15)); } // kΩ, normalized to 1 MΩ at 30 °C
-export function diode(u:number){return 0.00005*Math.expm1(u/0.052); } // mA; illustrative Shockley model, no breakdown
+export function semiconductor(t:number,gap:number,reference=1000){ return reference*Math.exp(gap/(2*k)*(1/(t+273.15)-1/303.15)); } // kΩ, reference at 30 °C
+export function diode(u:number,isMicroamps=.05,thermalVoltage=.052){return isMicroamps/1000*Math.expm1(u/thermalVoltage); } // mA; illustrative Shockley model, no breakdown
 export function diodeVoltage(sourceVoltage:number,flipped:boolean){return sourceVoltage*(flipped?-1:1);}
 export function rlc(r:number,l:number,c:number,f:number,rl=false){const w=2*Math.PI*f;const x=w*l-(rl?0:1/(w*c));return {z:Math.hypot(r,x),phase:Math.atan2(x,r),x};}
 export const bridgeModes=['r1','r2','series','parallel'] as const;
@@ -25,9 +26,9 @@ export function simulate(id:number,p:Params,mode:string):{metrics:Metric[];measu
  const m=(label:string,value:number,unit:string,detail?:string)=>({label,value,unit,detail});
  if(id===1){const rx=bridgeResistance(p,mode);reading=5*(p.l/100-rx/(p.r+rx));metrics=[m('Опір за формулою',p.r*p.l/(100-p.l),'Ом'),m('Небаланс моста',reading,'В'),m('Положення рівноваги',balance(id,p,mode),'см')];measurement={r:p.r,l1:p.l,l2:100-p.l,dR:p.r*.001,dl1:.1,dL:.1};}
  else if(id===2){reading=p.en*p.lx/p.ln-p.ex;metrics=[m('ЕРС за формулою',p.en*p.lx/p.ln,'В'),m('Небаланс',reading,'В'),m('Контакт рівноваги',balance(id,p),'см')];measurement={en:p.en,ln:p.ln,lx:p.lx};}
- else if(id===3){const rm=metal(p.t,p.r0,p.alpha),rs=semiconductor(p.t,p.gap);metrics=[m('Опір металу',rm,'Ом'),m('Опір напівпровідника',rs,'кОм'),m('Фактична температура',p.t+273.15,'К')];measurement={t:p.t,metal:rm,semi:rs};note='Напівпровідниковий зразок моделі має опір 1 МОм при 30 °C.';}
- else if(id===4){const i=diode(p.u);metrics=[m('Струм через діод',i,'мА'),m('Статичний опір',i===0?NaN:Math.abs(p.u/(i/1000)),'Ом'),m('Полярність',p.u>=0?1:-1,'',p.u>=0?'Пряма':'Зворотна')];measurement={u:p.u,i};note='Модель Шоклі: Iₛ = 0,05 мкА, nUₜ = 0,052 В. Пробій не моделюється.';}
- else if(id===5){metrics=[m('Частота Y',p.f,'Гц'),m('Період Y',1000/p.f,'мс'),m('Співвідношення X:Y',p.f/50,'',`1 : ${format(p.f/50)}`)];measurement=mode==='sensitivity'?{u:p.ux,length:2*Math.SQRT2*p.ux}:{u:p.u/Math.SQRT2,length:2*p.u};note='Чутливість демонстраційної трубки: αₓ = 1 мм/В.';}
+ else if(id===3){const rm=metal(p.t,p.r0,p.alpha),rs=semiconductor(p.t,p.gap,p.rs30);metrics=[m('Опір металу',rm,'Ом'),m('Опір напівпровідника',rs,'кОм'),m('Фактична температура',p.t+273.15,'К')];measurement={t:p.t,metal:rm,semi:rs};}
+ else if(id===4){const i=diode(p.u,p.isMicroamps,p.thermalVoltage);metrics=[m('Струм через діод',i,'мА'),m('Статичний опір',i===0?NaN:Math.abs(p.u/(i/1000)),'Ом'),m('Полярність',p.u>=0?1:-1,'',p.u>=0?'Пряма':'Зворотна')];measurement={u:p.u,i};note='Параметри діода визначаються варіантом; пробій не моделюється.';}
+ else if(id===5){metrics=[m('Частота Y',p.f,'Гц'),m('Період Y',1000/p.f,'мс'),m('Співвідношення X:Y',p.f/50,'',`1 : ${format(p.f/50)}`)];measurement=mode==='sensitivity'?{u:p.ux,length:2*Math.SQRT2*p.ux*tubeSensitivity}:{u:p.u/Math.SQRT2,length:2*p.u};note='Чутливість трубки визначається вимірюваннями.';}
  else if(id===6){const v=rlc(p.r,p.l/1000,p.c*1e-6,p.f,mode==='rl');metrics=[m('Повний опір Z',v.z,'Ом'),m('Діючий струм',p.u/v.z,'А'),m('Зсув фаз φ',v.phase*180/Math.PI,'°')];measurement={u:p.u,i:p.u/v.z,r:p.r,f:p.f};}
  else if(id===7){const pf=Math.cos(rad(p.phase)),power=p.u*p.i*pf;metrics=[m('Активна потужність',power,'Вт'),m('Коефіцієнт потужності',pf,''),m('Повна потужність',p.u*p.i,'ВА')];measurement={u:p.u,i:p.i,p:power};}
  else if(id===8){reading=p.l/100-p.c0/(p.c0+p.cx);metrics=[m('Ємність за формулою',p.c0*(100-p.l)/p.l,'мкФ'),m('Небаланс',reading,''),m('Контакт рівноваги',balance(id,p),'см')];measurement={c0:p.c0,l1:p.l,l2:100-p.l};note='Модель використовує ідеальні конденсатори.';}

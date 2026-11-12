@@ -22,7 +22,7 @@ test('compensation selects the actual reference cell and then the unknown',async
 
 test('journal: validation, persistence, deletion and CSV',async({page})=>{
  await page.goto('./#/lab/1');await power(page);await page.locator('#number-l').fill('42.8571428571');await page.locator('[data-action="record"]').click();await expect(page.locator('[data-result="rx"]')).toHaveText('750');
- await page.locator('[data-cell="l1"]').fill('25');await page.locator('[data-cell="l2"]').fill('75');await expect(page.locator('[data-result="rx"]')).toHaveText(/333/);await expect(page.locator('.source-badge')).toHaveText('Власні · R₁');
+ await page.locator('[data-cell="l1"]').fill('25');await page.locator('[data-cell="l2"]').fill('75');await expect(page.locator('[data-result="rx"]')).toHaveText(/333/);await expect(page.locator('.source-badge')).toHaveText('Власні · В1 · R₁');
  await page.locator('[data-cell="l1"]').fill('0');await expect(page.locator('.row-error')).toBeVisible();await page.locator('[data-cell="l1"]').fill('25');await page.reload();await expect(page.locator('[data-cell="l1"]')).toHaveValue('25');await expect(page.locator('[data-bench-action="power"]')).toHaveAttribute('aria-pressed','true');
  const downloaded=page.waitForEvent('download');await page.locator('[data-action="export"]').click();expect((await downloaded).suggestedFilename()).toBe('lab_1-measurements.csv');await page.locator('[data-delete]').click();await expect(page.locator('tr[data-row]')).toHaveCount(0);
 });
@@ -91,7 +91,7 @@ test('AC ammeter keeps its 0.5 A scale when the circuit or current changes',asyn
 test('WebGPU oscilloscope lives inside the instrument, XY and knobs respond',async({page})=>{
  const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push(m.text());});
  await page.goto('./#/lab/5');await expect(page.locator('#bench')).toHaveAttribute('data-backend','WebGPU',{timeout:20000});await power(page);await expect(page.locator('.scope-scale')).toContainText('X: t, мс · 2 мс/под.');await expect(page.locator('.scope-scale')).toContainText('Y: Uᵧ, В · 2 В/под.');await page.locator('[data-bench-action="xy"]').click();await page.getByRole('slider',{name:'Частота звукового генератора'}).press('End');await expect(page.locator('#number-f')).toHaveValue('1000');await page.locator('#number-f').fill('200');await expect(page.locator('[data-bench-action="xy"]')).toHaveAttribute('aria-pressed','true');await expect(page.locator('.scope-scale')).toContainText('X: Uₓ, В · 1 В/под.');
- const b=await page.locator('.bench-svg').boundingBox();if(!b)throw new Error('Missing scope');const roi={x:b.x+240/800*b.width,y:b.y+145/540*b.height+await page.evaluate(()=>scrollY),width:240/800*b.width,height:190/540*b.height};await expect.poll(async()=>crtPixels(await page.screenshot({fullPage:true}),roi)).toBeGreaterThan(100);await page.locator('#number-u').fill('5');const expectedSpan=5/2*23.75*2*b.width/800;await expect.poll(async()=>{const trace=crtTraceBounds(await page.screenshot({fullPage:true}),roi);return Math.abs(trace.maxY-trace.minY-expectedSpan);}).toBeLessThan(3);await page.screenshot({path:'test-results/oscilloscope.png',fullPage:true});await page.locator('[data-bench-action="scope"]').click();await page.locator('.bench-viewport').screenshot({path:'test-results/scope-grid-sweep.png'});await page.locator('[data-bench-action="sensitivity"]').click();await expect(page.locator('.scope-scale')).toContainText('X: Uₓ, В · 20 В/под.');await page.locator('.bench-viewport').screenshot({path:'test-results/scope-grid-sensitivity.png'});expect(errors).toEqual([]);
+ const b=await page.locator('.bench-svg').boundingBox();if(!b)throw new Error('Missing scope');const roi={x:b.x+240/800*b.width,y:b.y+145/540*b.height+await page.evaluate(()=>scrollY),width:240/800*b.width,height:190/540*b.height};await expect.poll(async()=>crtPixels(await page.screenshot({fullPage:true}),roi)).toBeGreaterThan(100);await page.locator('#number-u').fill('5');const expectedSpan=5/2*23.75*2*b.width/800;await expect.poll(async()=>{const trace=crtTraceBounds(await page.screenshot({fullPage:true}),roi);return Math.abs(trace.maxY-trace.minY-expectedSpan);}).toBeLessThan(3);await page.screenshot({path:'test-results/oscilloscope.png',fullPage:true});await page.locator('[data-bench-action="scope"]').click();await page.locator('.bench-viewport').screenshot({path:'test-results/scope-grid-sweep.png'});await page.locator('[data-bench-action="sensitivity"]').click();await expect(page.locator('.scope-scale')).toContainText('X: x, мм · 20 мм/под.');await page.locator('.bench-viewport').screenshot({path:'test-results/scope-grid-sensitivity.png'});expect(errors).toEqual([]);
 });
 test('lamp/coil switch and capacitor substitution on drawn equipment',async({page})=>{
  await page.goto('./#/lab/7');await power(page);await page.locator('[data-bench-action="load"]').click();await expect(page.locator('#number-phase')).toHaveCount(0);await page.locator('[data-action="record"]').click();await expect(page.locator('[data-result="pf"]')).toHaveText('1');await page.locator('[data-cell="p"]').fill('10000');await expect(page.locator('.row-error')).toContainText('P ≤ UI');
@@ -153,7 +153,7 @@ test('unknown specimen values stay hidden while measured inputs and calculated r
   if(id===5)await expect(page.locator('#number-phase')).toBeVisible();
  }
  await page.goto('./?renderer=canvas#/lab/7');await power(page);await page.locator('[data-action="record"]').click();
- await expect(page.locator('[data-result="phase"]')).toHaveText('45');
+ await expect(page.locator('[data-result="phase"]')).toHaveText('60');
 });
 
 test('scope covers the configured generator range, a complete phase cycle and 50 V RMS sensitivity',async({page})=>{
@@ -164,7 +164,7 @@ test('scope covers the configured generator range, a complete phase cycle and 50
  await frequency.press('End');await expect(page.locator('#number-f')).toHaveValue('1000');
  await page.getByRole('slider',{name:'Фаза сигналу',exact:true}).press('End');await expect(page.locator('#number-phase')).toHaveValue('360');
  await page.locator('[data-bench-action="sensitivity"]').click();await expect(page.locator('#number-u')).toBeHidden();await expect(page.locator('#number-ux')).toBeVisible();
- await page.getByRole('slider',{name:'Діюча напруга X',exact:true}).press('End');await expect(page.locator('#number-ux')).toHaveValue('50');await expect(page.locator('.scope-scale')).toContainText('20 В/под.');
+ await page.getByRole('slider',{name:'Діюча напруга X',exact:true}).press('End');await expect(page.locator('#number-ux')).toHaveValue('50');await expect(page.locator('.scope-scale')).toContainText('20 мм/под.');
  await page.locator('[data-action="record"]').click();await expect(page.locator('[data-cell="u"]')).toHaveValue('50');await expect(page.locator('[data-result="alpha"]')).toHaveText('1');
  await page.locator('.bench-viewport').screenshot({path:'test-results/scope-50v.png'});
  await page.locator('#number-ux').fill('0');await expect(page.locator('[data-action="record"]')).toBeDisabled();
@@ -205,7 +205,7 @@ test('bridge measures one persistent pair separately, in series and in parallel'
   await page.locator('#number-r').fill(r);await page.locator('#number-l').fill(l);await expect(page.locator('[data-action="record"]')).toBeEnabled();await page.locator('[data-action="record"]').click();
   if(mode==='series'||mode==='parallel')await page.locator('.bench-viewport').screenshot({path:`test-results/bridge-${mode}.png`});
  }
- await expect(page.locator('tr[data-row]')).toHaveCount(4);await expect(page.locator('.source-badge')).toHaveText(['Модель · R₁','Модель · R₂','Модель · Послідовно','Модель · Паралельно']);
+ await expect(page.locator('tr[data-row]')).toHaveCount(4);await expect(page.locator('.source-badge')).toHaveText(['Модель · В1 · R₁','Модель · В1 · R₂','Модель · В1 · Послідовно','Модель · В1 · Паралельно']);
  expect(await page.locator('[data-cell="dR"]').evaluateAll(nodes=>nodes.map(n=>(n as HTMLInputElement).value))).toEqual(['1','1','2','1']);expect(await page.locator('[data-cell="dl1"]').evaluateAll(nodes=>nodes.map(n=>(n as HTMLInputElement).value))).toEqual(['0.1','0.1','0.1','0.1']);
  await expect(page.locator('#table-summary')).toContainText('Послідовно — порівняння за виміряними R₁ і R₂');await expect(page.locator('#table-summary')).toContainText('Паралельно — порівняння за виміряними R₁ і R₂');await expect(page.locator('#table-summary').getByText(/У межах сумарної граничної похибки/)).toHaveCount(2);
  const first=await page.locator('[data-result="rx"]').first().innerText();await page.reload();await expect(page.locator('.bench-resistance-network')).toHaveAttribute('data-connection','parallel');await expect(page.locator('[data-result="rx"]').first()).toHaveText(first);await expect(page.locator('#number-rx')).toHaveCount(0);await expect(page.locator('#number-rx2')).toHaveCount(0);

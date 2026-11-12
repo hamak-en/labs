@@ -1,13 +1,14 @@
 import { labs } from './config';
 import {bridgeModes} from './physics';
+import {applyVariant,validVariant,hasVariants} from './variants';
 import type { Params, Row } from './physics';
-export interface Measurement {id:number;row:Row;mode:string;source:'demo'|'manual'}
+export interface Measurement {id:number;row:Row;mode:string;source:'demo'|'manual';variant?:number;specimen?:string}
 export interface Apparatus {power:boolean;connected:boolean;heating:boolean;core:boolean;probe:'metal'|'semi';selected:number;temperature:number}
 export const freshApparatus=(id:number):Apparatus=>({power:false,connected:true,heating:false,core:false,probe:'metal',selected:[2,7].includes(id)?1:0,temperature:30});
-export interface LabState {params:Params;mode:string;rows:Measurement[];apparatus:Apparatus}
+export interface LabState {params:Params;mode:string;rows:Measurement[];apparatus:Apparatus;variant?:number}
 export interface State {version:1;labs:Record<string,LabState>}
 const key='electricity-lab:v1';
-export function fresh():State{return {version:1,labs:Object.fromEntries(labs.map(l=>[l.id,{params:Object.fromEntries(l.fields.map(f=>[f.key,f.value])),mode:l.id===1?'r1':l.id===6?'rlc':l.id===5?'scope':l.id===4?'forward':'default',rows:[],apparatus:freshApparatus(l.id)}]))};}
+export function fresh():State{return {version:1,labs:Object.fromEntries(labs.map(l=>[l.id,{params:Object.fromEntries(l.fields.map(f=>[f.key,f.value])),mode:l.id===1?'r1':l.id===6?'rlc':l.id===5?'scope':l.id===4?'forward':'default',rows:[],apparatus:freshApparatus(l.id),variant:hasVariants(l.id)?1:undefined}]))};}
 export function restore():State{const state=fresh();try{
  const data=JSON.parse(localStorage.getItem(key)??'null');if(data?.version!==1||!data.labs)return state;
  for(const lab of labs){const s=data.labs[lab.id];if(!s||typeof s!=='object')continue;
@@ -19,7 +20,11 @@ export function restore():State{const state=fresh();try{
    const p=state.labs[1].params;
    if(state.labs[1].apparatus.selected===1){p.rx2=p.rx;p.rx=labs[0].fields.find(f=>f.key==='rx')!.value;state.labs[1].mode='r2';}
   }
-  if(Array.isArray(s.rows))state.labs[lab.id].rows=s.rows.slice(0,200).filter((r:Measurement)=>r&&typeof r.id==='number'&&r.row!==null&&typeof r.row==='object'&&['demo','manual'].includes(r.source)&&typeof r.mode==='string').map((r:Measurement)=>({id:r.id,mode:r.mode,source:r.source,row:Object.fromEntries(lab.columns.map(c=>{const legacyDefault=lab.id===1&&!(c.key in r.row)?c.key==='dR'&&typeof r.row.r==='number'?.001*r.row.r:['dl1','dL'].includes(c.key)?.1:null:null;return [c.key,typeof r.row[c.key]==='number'&&Number.isFinite(r.row[c.key])?r.row[c.key]:r.row[c.key]===null?null:legacyDefault];}))}));
+  // An old installation may contain custom specimen parameters. Keep them and
+  // its untagged rows intact until the student explicitly selects a variant.
+  state.labs[lab.id].variant=hasVariants(lab.id)&&validVariant(s.variant)?s.variant:undefined;
+  if(hasVariants(lab.id)&&validVariant(s.variant))applyVariant(lab.id,s.variant,state.labs[lab.id].params,state.labs[lab.id].apparatus);
+  if(Array.isArray(s.rows))state.labs[lab.id].rows=s.rows.slice(0,200).filter((r:Measurement)=>r&&typeof r.id==='number'&&r.row!==null&&typeof r.row==='object'&&['demo','manual'].includes(r.source)&&typeof r.mode==='string').map((r:Measurement)=>({id:r.id,mode:r.mode,source:r.source,variant:validVariant(r.variant)?r.variant:undefined,specimen:typeof r.specimen==='string'&&['air','core','lamp','coil','c1','c2'].includes(r.specimen)?r.specimen:undefined,row:Object.fromEntries(lab.columns.map(c=>{const legacyDefault=lab.id===1&&!(c.key in r.row)?c.key==='dR'&&typeof r.row.r==='number'?.001*r.row.r:['dl1','dL'].includes(c.key)?.1:null:null;return [c.key,typeof r.row[c.key]==='number'&&Number.isFinite(r.row[c.key])?r.row[c.key]:r.row[c.key]===null?null:legacyDefault];}))}));
  }
  }catch{/* An unavailable or corrupt browser store must not prevent work. */}return state;}
 export function save(state:State):boolean{try{localStorage.setItem(key,JSON.stringify(state));return true;}catch{return false;}}
