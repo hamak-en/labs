@@ -1,5 +1,5 @@
 import { labs } from './config';
-import {bridgeModes} from './physics';
+import {bridgeModes,capacitanceModes} from './physics';
 import {applyVariant,validVariant,hasVariants} from './variants';
 import type { Params, Row } from './physics';
 export interface Measurement {id:number;row:Row;mode:string;source:'demo'|'manual';variant?:number;specimen?:string}
@@ -8,23 +8,27 @@ export const freshApparatus=(id:number):Apparatus=>({power:false,connected:true,
 export interface LabState {params:Params;mode:string;rows:Measurement[];apparatus:Apparatus;variant?:number}
 export interface State {version:1;labs:Record<string,LabState>}
 const key='electricity-lab:v1';
-export function fresh():State{return {version:1,labs:Object.fromEntries(labs.map(l=>[l.id,{params:Object.fromEntries(l.fields.map(f=>[f.key,f.value])),mode:l.id===1?'r1':l.id===6?'rlc':l.id===5?'scope':l.id===4?'forward':'default',rows:[],apparatus:freshApparatus(l.id),variant:hasVariants(l.id)?1:undefined}]))};}
+export function fresh():State{return {version:1,labs:Object.fromEntries(labs.map(l=>[l.id,{params:Object.fromEntries(l.fields.map(f=>[f.key,f.value])),mode:l.id===1?'r1':l.id===8?'c1':l.id===6?'rlc':l.id===5?'scope':l.id===4?'forward':'default',rows:[],apparatus:freshApparatus(l.id),variant:hasVariants(l.id)?1:undefined}]))};}
 export function restore():State{const state=fresh();try{
  const data=JSON.parse(localStorage.getItem(key)??'null');if(data?.version!==1||!data.labs)return state;
  for(const lab of labs){const s=data.labs[lab.id];if(!s||typeof s!=='object')continue;
   const a=s.apparatus;if(a&&typeof a==='object'){for(const key of ['power','connected','heating','core'] as const)if(typeof a[key]==='boolean')state.labs[lab.id].apparatus[key]=a[key];if(['metal','semi'].includes(a.probe))state.labs[lab.id].apparatus.probe=a.probe;if(a.selected===0||a.selected===1)state.labs[lab.id].apparatus.selected=a.selected;if(typeof a.temperature==='number'&&Number.isFinite(a.temperature)&&a.temperature>=30&&a.temperature<=80)state.labs[lab.id].apparatus.temperature=a.temperature;}
   for(const f of lab.fields){const v=s.params?.[f.key];if(typeof v==='number'&&Number.isFinite(v)&&v>=f.min&&v<=f.max&&(!f.choices||f.choices.includes(v)))state.labs[lab.id].params[f.key]=f.discrete?f.min+Math.round((v-f.min)/f.step)*f.step:v;}
-  const modes=lab.id===1?[...bridgeModes]:lab.id===3?['default','linear']:lab.id===4?['forward','reverse']:lab.id===5?['scope','xy','sensitivity']:lab.id===6?['rlc','rl']:['default'];
+  const modes=lab.id===1?[...bridgeModes]:lab.id===8?[...capacitanceModes]:lab.id===3?['default','linear']:lab.id===4?['forward','reverse']:lab.id===5?['scope','xy','sensitivity']:lab.id===6?['rlc','rl']:['default'];
   if(modes.includes(s.mode))state.labs[lab.id].mode=s.mode;
   if(lab.id===1&&!bridgeModes.includes(s.mode)){
    const p=state.labs[1].params;
    if(state.labs[1].apparatus.selected===1){p.rx2=p.rx;p.rx=labs[0].fields.find(f=>f.key==='rx')!.value;state.labs[1].mode='r2';}
   }
+  if(lab.id===8&&!capacitanceModes.includes(s.mode)){
+   state.labs[8].mode=state.labs[8].apparatus.selected===1?'c2':'c1';
+   if(state.labs[8].apparatus.selected===1){state.labs[8].params.cx2=state.labs[8].params.cx;state.labs[8].params.cx=lab.fields.find(f=>f.key==='cx')!.value;}
+  }
   // An old installation may contain custom specimen parameters. Keep them and
   // its untagged rows intact until the student explicitly selects a variant.
   state.labs[lab.id].variant=hasVariants(lab.id)&&validVariant(s.variant)?s.variant:undefined;
   if(hasVariants(lab.id)&&validVariant(s.variant))applyVariant(lab.id,s.variant,state.labs[lab.id].params,state.labs[lab.id].apparatus);
-  if(Array.isArray(s.rows))state.labs[lab.id].rows=s.rows.slice(0,200).filter((r:Measurement)=>r&&typeof r.id==='number'&&r.row!==null&&typeof r.row==='object'&&['demo','manual'].includes(r.source)&&typeof r.mode==='string').map((r:Measurement)=>({id:r.id,mode:r.mode,source:r.source,variant:validVariant(r.variant)?r.variant:undefined,specimen:typeof r.specimen==='string'&&['air','core','lamp','coil','c1','c2'].includes(r.specimen)?r.specimen:undefined,row:Object.fromEntries(lab.columns.map(c=>{const legacyDefault=lab.id===1&&!(c.key in r.row)?c.key==='dR'&&typeof r.row.r==='number'?.001*r.row.r:['dl1','dL'].includes(c.key)?.1:null:null;return [c.key,typeof r.row[c.key]==='number'&&Number.isFinite(r.row[c.key])?r.row[c.key]:r.row[c.key]===null?null:legacyDefault];}))}));
+  if(Array.isArray(s.rows))state.labs[lab.id].rows=s.rows.slice(0,200).filter((r:Measurement)=>r&&typeof r.id==='number'&&r.row!==null&&typeof r.row==='object'&&['demo','manual'].includes(r.source)&&typeof r.mode==='string').map((r:Measurement)=>({id:r.id,mode:lab.id===8&&r.mode==='default'&&['c1','c2'].includes(r.specimen??'')?r.specimen!:r.mode,source:r.source,variant:validVariant(r.variant)?r.variant:undefined,specimen:typeof r.specimen==='string'&&['air','core','lamp','coil','c1','c2','pair'].includes(r.specimen)?r.specimen:undefined,row:Object.fromEntries(lab.columns.map(c=>{const legacyDefault=lab.id===1&&!(c.key in r.row)?c.key==='dR'&&typeof r.row.r==='number'?.001*r.row.r:['dl1','dL'].includes(c.key)?.1:null:null;return [c.key,typeof r.row[c.key]==='number'&&Number.isFinite(r.row[c.key])?r.row[c.key]:r.row[c.key]===null?null:legacyDefault];}))}));
  }
  }catch{/* An unavailable or corrupt browser store must not prevent work. */}return state;}
 export function save(state:State):boolean{try{localStorage.setItem(key,JSON.stringify(state));return true;}catch{return false;}}

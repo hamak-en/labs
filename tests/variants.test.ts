@@ -14,9 +14,9 @@ describe('ten reproducible specimen sets in labs with variants',()=>{
  });
  it('recovers each bridge resistance, source EMF and both capacitances by null measurements',()=>{
   for(const v of variantNumbers)for(const id of [1,2,8])for(const selected of id===8?[0,1]:[0]){
-   const p=params(id);applyVariant(id,v,p,{selected,core:false});p[id===2?'lx':'l']=balance(id,p,'r1');
-   const sim=simulate(id,p,'r1'),key=id===1?'rx':id===2?'ex':'cx';expect(sim.reading).toBeCloseTo(0,12);expect(calculateRow(id,sim.measurement).hasOwnProperty(key)).toBe(true);expect(calculateRow(id,sim.measurement)[key]).toBeCloseTo(p[key],8);
-   if(id===8){const rounded=Math.round(p.l*10)/10;expect(Math.abs(simulate(8,{...p,l:rounded},'default').reading!*12.6)).toBeLessThan(.005);}
+   const p=params(id);applyVariant(id,v,p,{selected,core:false});const mode=id===8?(selected===0?'c1':'c2'):'r1';p[id===2?'lx':'l']=balance(id,p,mode);
+   const sim=simulate(id,p,mode),key=id===1?'rx':id===2?'ex':'cx';expect(sim.reading).toBeCloseTo(0,12);expect(calculateRow(id,sim.measurement).hasOwnProperty(key)).toBe(true);expect(calculateRow(id,sim.measurement)[key]).toBeCloseTo(id===8&&selected===1?p.cx2:p[key],8);
+   if(id===8){const rounded=Math.round(p.l*10)/10;expect(Math.abs(simulate(8,{...p,l:rounded},mode).reading!*12.6)).toBeLessThan(.005);}
   }
  });
  it('recovers all three thermal unknowns from a six-temperature series',()=>{
@@ -38,7 +38,7 @@ describe('ten reproducible specimen sets in labs with variants',()=>{
  });
  it('restores variant, configuration and journal metadata while preserving old custom installations',()=>{
   let text='';vi.stubGlobal('localStorage',{getItem:()=>text,setItem:(_k:string,v:string)=>{text=v;}});
-  const s=fresh();s.labs[8].variant=10;s.labs[8].apparatus.selected=1;applyVariant(8,10,s.labs[8].params,s.labs[8].apparatus);s.labs[8].rows=[{id:1,row:{c0:2,l1:40,l2:60},mode:'default',source:'manual',variant:2,specimen:'c1'}];save(s);expect(restore().labs[8]).toEqual(s.labs[8]);
+  const s=fresh();s.labs[8].variant=10;s.labs[8].mode='c2';s.labs[8].apparatus.selected=1;applyVariant(8,10,s.labs[8].params,s.labs[8].apparatus);s.labs[8].rows=[{id:1,row:{c0:2,l1:40,l2:60},mode:'c1',source:'manual',variant:2,specimen:'c1'}];save(s);expect(restore().labs[8]).toEqual(s.labs[8]);
   const old=fresh();delete old.labs[2].variant;old.labs[2].params.ex=.91;old.labs[2].rows=[{id:2,row:{en:1,ln:50,lx:45.5},mode:'default',source:'manual'}];save(old);const restored=restore().labs[2];expect(restored.variant).toBeUndefined();expect(restored.params.ex).toBe(.91);expect(restored.rows[0].variant).toBeUndefined();expect(restored.rows[0].row.lx).toBe(45.5);
  });
 });

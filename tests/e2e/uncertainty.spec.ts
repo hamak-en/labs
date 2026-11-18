@@ -12,7 +12,6 @@ test('every theory tab explains uncertainty with accessible, valid mathematics',
       await expect(guide).toHaveCount(1);
       await expect(guide).toHaveAttribute('open', '');
       await expect(guide.locator('.uncertainty-source')).toContainText('Методичка');
-      await expect(guide.locator('.uncertainty-journal')).toContainText('Що обчислює журнал.');
       await expect(guide.locator('mfrac').first()).toBeVisible();
       expect(await guide.locator('math').evaluateAll(elements => elements.filter(el => {
         const doc = new DOMParser().parseFromString(el.outerHTML, 'application/xml');

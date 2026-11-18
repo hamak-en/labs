@@ -18,6 +18,7 @@ test('knob buttons step by one increment, support the keyboard and respect limit
       await expect(knob).toHaveAttribute('aria-valuenow', String(Number((initial + step).toFixed(6))));
       await minus.click();
       await expect(knob).toHaveAttribute('aria-valuenow', String(initial));
+      await expect(minus).toBeFocused();
       await plus.focus();
       await page.keyboard.press('Enter');
       await expect(plus).toBeFocused();

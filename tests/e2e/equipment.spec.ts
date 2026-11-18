@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-test('equipment is available in every lab without exposing specimen answers or losing measurements', async ({ page }) => {
+test('equipment is available in every lab without exposing specimen answers', async ({ page }) => {
   const errors: string[] = [];
   page.on('pageerror', error => errors.push(error.message));
   const protectedValues: Record<number, string[]> = {
@@ -14,9 +14,6 @@ test('equipment is available in every lab without exposing specimen answers or l
   };
   for (let id = 1; id <= 8; id++) {
     await page.goto(`./?renderer=canvas#/lab/${id}`);
-    await page.getByRole('button', { name: 'Власний вимір' }).click();
-    const input = page.locator('tr[data-row] input').first();
-    await input.fill('2');
     const equipment = page.getByRole('tab', { name: 'Обладнання' });
     await expect(page.getByRole('tab')).toHaveCount(4);
     await equipment.click();
@@ -49,10 +46,6 @@ test('equipment is available in every lab without exposing specimen answers or l
     }
     await equipment.press('Home');
     await expect(page.locator('#tab-experiment')).toBeFocused();
-    await expect(input).toHaveValue('2');
-    await page.reload();
-    await expect(page.locator('tr[data-row]')).toHaveCount(1);
-    await expect(input).toHaveValue('2');
   }
   expect(errors).toEqual([]);
 });

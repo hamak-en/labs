@@ -17,6 +17,6 @@ export function applyVariant(id:number,variant:number,p:Params,a:{selected:numbe
  const values=variantValues(id,variant);
  if(id===6)p.l=a.core?values.lCore:values.l;
  else if(id===7)p.phase=a.selected===0?values.lampPhase:values.coilPhase;
- else if(id===8)p.cx=a.selected===0?values.cx1:values.cx2;
+ else if(id===8){p.cx=values.cx1;p.cx2=values.cx2;}
  else Object.assign(p,values);
 }

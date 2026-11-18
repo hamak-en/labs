@@ -15,10 +15,15 @@ export const bridgeModeLabel=(mode:string)=>({r1:'R₁',r2:'R₂',series:'Пос
 export function combineResistances(a:number,b:number,mode:'series'|'parallel'){return mode==='series'?a+b:a*b/(a+b);}
 export function bridgeResistance(p:Params,mode:string){const first=p.rx,second=p.rx2??1275;return mode==='r2'?second:mode==='series'||mode==='parallel'?combineResistances(first,second,mode):first;}
 export function combinedResistanceError(a:number,b:number,da:number,db:number,mode:'series'|'parallel'){return mode==='series'?da+db:(b*b*da+a*a*db)/((a+b)*(a+b));}
+export const capacitanceModes=['c1','c2','series','parallel'] as const;
+export const capacitanceModeLabel=(mode:string)=>({c1:'C₁',c2:'C₂',series:'Послідовно',parallel:'Паралельно'}[mode]??'Без позначення з’єднання');
+export function combineCapacitances(a:number,b:number,mode:'series'|'parallel'){return mode==='parallel'?a+b:a*b/(a+b);}
+export function bridgeCapacitance(p:Params,mode:string){return mode==='c2'?p.cx2:mode==='series'||mode==='parallel'?combineCapacitances(p.cx,p.cx2,mode):p.cx;}
+export function combinedCapacitanceError(a:number,b:number,da:number,db:number,mode:'series'|'parallel'){return mode==='parallel'?da+db:(b*b*da+a*a*db)/((a+b)*(a+b));}
 export function balance(id:number,p:Params,mode=''):number{
  if(id===1){const rx=bridgeResistance(p,mode);return 100*rx/(rx+p.r);}
  if(id===2)return p.ex*p.ln/p.en;
- if(id===8)return 100*p.c0/(p.c0+p.cx);
+ if(id===8)return 100*p.c0/(p.c0+bridgeCapacitance(p,mode));
  throw new Error('Цей дослід не має контакту балансування.');
 }
 export function simulate(id:number,p:Params,mode:string):{metrics:Metric[];measurement:Row;reading?:number;note:string}{
@@ -31,7 +36,7 @@ export function simulate(id:number,p:Params,mode:string):{metrics:Metric[];measu
  else if(id===5){metrics=[m('Частота Y',p.f,'Гц'),m('Період Y',1000/p.f,'мс'),m('Співвідношення X:Y',p.f/50,'',`1 : ${format(p.f/50)}`)];measurement=mode==='sensitivity'?{u:p.ux,length:2*Math.SQRT2*p.ux*tubeSensitivity}:{u:p.u/Math.SQRT2,length:2*p.u};note='Чутливість трубки визначається вимірюваннями.';}
  else if(id===6){const v=rlc(p.r,p.l/1000,p.c*1e-6,p.f,mode==='rl');metrics=[m('Повний опір Z',v.z,'Ом'),m('Діючий струм',p.u/v.z,'А'),m('Зсув фаз φ',v.phase*180/Math.PI,'°')];measurement={u:p.u,i:p.u/v.z,r:p.r,f:p.f};}
  else if(id===7){const pf=Math.cos(rad(p.phase)),power=p.u*p.i*pf;metrics=[m('Активна потужність',power,'Вт'),m('Коефіцієнт потужності',pf,''),m('Повна потужність',p.u*p.i,'ВА')];measurement={u:p.u,i:p.i,p:power};}
- else if(id===8){reading=p.l/100-p.c0/(p.c0+p.cx);metrics=[m('Ємність за формулою',p.c0*(100-p.l)/p.l,'мкФ'),m('Небаланс',reading,''),m('Контакт рівноваги',balance(id,p),'см')];measurement={c0:p.c0,l1:p.l,l2:100-p.l};note='Модель використовує ідеальні конденсатори.';}
+ else if(id===8){reading=p.l/100-p.c0/(p.c0+bridgeCapacitance(p,mode));metrics=[m('Ємність за формулою',p.c0*(100-p.l)/p.l,'мкФ'),m('Небаланс',reading,''),m('Контакт рівноваги',balance(id,p,mode),'см')];measurement={c0:p.c0,l1:p.l,l2:100-p.l};note='Модель використовує ідеальні конденсатори.';}
  return {metrics,measurement,reading,note};
 }
 function value(row:Row,key:string,positive=false):number{const v=row[key];if(v===null||v===undefined||!Number.isFinite(v))throw new Error('Заповни всі поля числами.');if(positive&&v<=0)throw new Error('Опори, довжини, частоти та модулі показів мають бути більшими за нуль.');return v;}
