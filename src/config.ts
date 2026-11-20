@@ -12,6 +12,8 @@ export const equipmentLimits = {
  power: {voltage:130,lampCurrent:.5,coilCurrent:2.5,watts:750},
  sotti: {referenceCapacitance:2,ranges:[300,3,1] as const,resolution:.01},
 } as const;
+// Decimal precision of the simulated lamp milliammeter.
+export const lampCurrentReadoutDigits = 2;
 // User-selected working range of the simulated generator.
 export const generatorRange={min:1,max:1000} as const;
 const col = (key:string,label:string,unit:string):Column=>({key,label,unit});

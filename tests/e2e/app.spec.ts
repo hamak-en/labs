@@ -178,6 +178,8 @@ test('documented source, resistor and capacitor limits apply to controls and res
 test('power uses the 500 mA lamp meter and 2.5 A coil meter with explicit overrange',async({page})=>{
  await page.goto('./#/lab/7');await power(page);await page.locator('#number-i').fill('1');
  await page.locator('[data-bench-action="load"]').click();const milli=page.locator('.bench-digital[aria-label="МІЛІАМПЕРМЕТР"]');await expect(milli.locator('.bench-lcd')).toHaveText('> 500');await expect(milli).toContainText('Поза шкалою');await expect(page.locator('#number-i')).toHaveAttribute('max','0.5');
+ await page.locator('#number-i').fill('0.2307692');await expect(milli.locator('.bench-lcd')).toHaveText('230,77');
+ await page.locator('#number-i').fill('0.0000004');await expect(milli.locator('.bench-lcd')).toHaveText('0');
  await page.locator('#number-i').fill('0.5');await expect(milli.locator('.bench-lcd')).toHaveText('500');
  await page.locator('[data-bench-action="load"]').click();await expect(page.locator('#number-i')).toHaveAttribute('max','2.5');await expect(page.locator('.bench-digital[aria-label="АМПЕРМЕТР"] .bench-lcd')).toHaveText('0,5');await expect(page.locator('.bench-meter[aria-label="ВАТМЕТР W"] .bench-scale')).toHaveText(['0','375','750']);const source=page.getByRole('slider',{name:'Регулятор напруги',exact:true});await source.press('Home');await expect(page.locator('#number-u')).toHaveValue('0');await source.press('ArrowRight');await expect.poll(async()=>Number(await page.locator('#number-i').inputValue())).toBeGreaterThan(0);
 });

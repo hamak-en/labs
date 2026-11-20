@@ -1,0 +1,146 @@
+.mechanics-control button:focus-visible,
+.mechanics-actions button:focus-visible {
+  outline: 2px solid #58723f;
+  outline-offset: 2px;
+}
+
+.mechanics-scene .mechanics-instrument {
+  fill: #3e6655;
+  font-size: 13px;
+  font-weight: 650;
+  letter-spacing: 1px;
+}
+
+.mechanics-scene .mechanics-label { font-size: 16px; }
+.mechanics-scene .mechanics-reading { font: 22px ui-monospace, monospace; fill: #274b37; }
+.mechanics-scene .mechanics-compact-readout .mechanics-instrument { font-size: 10px; letter-spacing: .3px; }
+.mechanics-scene .mechanics-compact-readout .mechanics-reading { font-size: 15px; }
+.mechanics-scene .mechanics-tick { font-size: 12px; }
+.mechanics-scene .mechanics-engraved { font-size: 10px; }
+.mechanics-scene .mechanics-dial-tick {
+  font-size: 10px;
+  dominant-baseline: central;
+  paint-order: stroke;
+  stroke: #eef1df;
+  stroke-width: 1.5px;
+}
+.mechanics-scene .mechanics-status { font-size: 15px; fill: #3e5b45; }
+
+.mechanics-control { gap: 6px; }
+.mechanics-control input[type="number"] { width: 64px; }
+.mechanics-control button,
+.mechanics-points button {
+  min-width: 25px;
+  min-height: 26px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #f5f8ef;
+  color: var(--ink);
+}
+
+.mechanics-stage-method {
+  position: absolute;
+  z-index: 3;
+  inset-block-start: 9%;
+  inset-inline-start: 25%;
+  transform: translateY(-50%);
+  width: max-content;
+  min-height: 36px;
+  margin: 0;
+  padding: 6px 12px;
+  gap: 10px;
+  border-color: #284837;
+  color: #f4f7ee;
+  background: #365c4a;
+  font-size: 14px;
+  font-weight: 600;
+}
+.mechanics-stage-method:hover { background: #2b4d3d; }
+.mechanics-stage-method[data-instrument="sphere"] { inset-inline-start: 18.25%; }
+.mechanics-stage-method[data-instrument="stretch"] { inset-inline-start: 22%; }
+.mechanics-stage-method[data-instrument="bend"] { inset-inline-start: 24%; }
+.mechanics-stage-method[data-instrument="phase"] { inset-inline-start: 30%; }
+.mechanics-stage-method[data-instrument="resonance"] { inset-inline-start: 35%; }
+.mechanics-controls-card .controls { margin-top: 15px; gap: 15px; }
+.mechanics-actions { display: grid; gap: 7px; margin-top: 16px; }
+.mechanics-actions button { justify-content: flex-start; white-space: normal; text-align: left; }
+.mechanics-actions button[aria-pressed="true"] { background: #e3edcf; border-color: #a9bd88; color: #253923; }
+
+.mechanics-reference { margin: 24px 0 0; min-width: 0; }
+.mechanics-equipment { display: grid; grid-template-columns: minmax(135px, 1fr) minmax(0, 3fr); gap: 16px; margin: 24px 0 0; }
+.mechanics-equipment dt, .mechanics-equipment dd { padding-top: 14px; border-top: 1px solid var(--line); margin: 0; }
+.mechanics-equipment dt { font-size: 13px; font-weight: 600; }
+.mechanics-data-form { display: flex; align-items: end; flex-wrap: wrap; gap: 12px; margin-top: 14px; }
+.mechanics-data-form label { display: grid; gap: 5px; font-size: 12px; }
+.mechanics-data-form input { width: 115px; padding: 7px; border: 1px solid var(--line); border-radius: 6px; color: var(--ink); font: inherit; }
+.mechanics-points { display: flex; flex-wrap: wrap; gap: 8px; padding: 0; list-style: none; }
+.mechanics-points li { display: flex; align-items: center; gap: 6px; padding: 2px 3px 2px 8px; background: #f5f8ef; border-radius: 6px; font-size: 12px; }
+.mechanics-graphs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+.mechanics-chart { display: block; width: 100%; height: auto; min-width: 360px; font-size: 13px; fill: #3a5444; }
+.mechanics-graphs figure, .mechanics-nomogram { margin: 0; min-width: 0; }
+.mechanics-chart-viewport { max-width: 700px; overflow-x: auto; }
+.mechanics-nomogram .mechanics-chart { min-width: 475px; }
+.mechanics-reference figcaption, #mech-benzene-charts > p { font-size: 12px; line-height: 1.65; color: var(--muted); }
+
+@media (max-width: 700px) {
+  .mechanics-graphs, .mechanics-equipment { grid-template-columns: minmax(0, 1fr); }
+  .mechanics-equipment { gap: 7px; }
+  .mechanics-equipment dd { border: 0; padding: 0 0 12px; }
+}
+
+.mechanics-fan-spinning { transform-origin: 0 0; animation: mechanics-fan-turn .65s linear infinite; }
+@keyframes mechanics-fan-turn { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .mechanics-fan-spinning { animation: none; } }
+
+.mechanics-handling {
+  margin: 8px 0 0;
+  color: #53675a;
+  font-size: 11px;
+  line-height: 1.6;
+}
+.mechanics-backup { margin-top: 17px; }
+.mechanics-backup summary { color: var(--ink); cursor: pointer; font-size: 12px; font-weight: 550; }
+.mechanics-backup .mechanics-actions { margin-top: 8px; }
+
+.mechanics-scene .mech-engraving,
+.mechanics-scene .mech-setting,
+.mechanics-scene .mech-key-label {
+  fill: #2d493e;
+  font-size: 11px;
+  font-weight: 650;
+}
+.mechanics-scene .mech-engraving { font-size: 10px; letter-spacing: .8px; }
+.mechanics-scene .mech-setting { font-family: ui-monospace, monospace; }
+.mechanics-scene .mech-key-symbol { fill: #2d493e; font-size: 17px; font-weight: 650; }
+.mechanics-scene .mech-key-seat { fill: #627368; stroke: #526054; }
+.mechanics-scene .mech-key-face { fill: url(#mech-button); stroke: #a19470; }
+.mechanics-scene .mech-grip { fill: #e7d7aa; stroke: #705632; stroke-width: 1.2px; }
+.mechanics-scene .mech-grip-glyph,
+.mechanics-scene .mech-knob-tick { fill: none; stroke: #38594d; stroke-width: 1.2px; stroke-linecap: round; }
+.mechanics-scene .mech-object-hit { fill: transparent; stroke: transparent; stroke-width: 1.8px; }
+.mechanics-scene .mech-knob-base { fill: #af925e; stroke: #705a38; }
+.mechanics-scene .mech-knob-grip { fill: url(#mech-knob); stroke: #28483d; }
+.mechanics-scene .mech-knob-cap { fill: none; stroke: #82998b; pointer-events: none; }
+.mechanics-scene .mech-knob-needle { stroke: #f1e5bb; stroke-width: 2.3px; stroke-linecap: round; pointer-events: none; }
+.mechanics-scene [data-mech-id] { cursor: pointer; outline: none; }
+.mechanics-scene .mech-slider { cursor: grab; touch-action: none; }
+.mechanics-scene .mech-slider:active { cursor: grabbing; }
+.mechanics-scene [aria-pressed="true"] .mech-key-face { fill: #c7dba0; stroke: #6a884e; }
+.mechanics-scene [aria-disabled="true"] { cursor: not-allowed; }
+.mechanics-scene [aria-disabled="true"] > * { opacity: .59; }
+.mechanics-scene [data-mech-id]:not([aria-disabled="true"]):hover .mech-key-face { fill: #f5ebcd; }
+.mechanics-scene [data-mech-id]:not([aria-disabled="true"]):hover .mech-object-hit { fill: #c8de8e28; stroke: #7b955a; }
+.mechanics-scene [data-mech-id]:focus-visible .mech-key-seat,
+.mechanics-scene [data-mech-id]:focus-visible .mech-object-hit,
+.mechanics-scene [data-mech-id]:focus-visible .mech-knob-base {
+  stroke: #365b21;
+  stroke-width: 3px;
+}
+
+.mechanics-time-log { min-width: 0; }
+.mechanics-time-log .section-title { flex-wrap: wrap; }
+.mechanics-time-log > .muted,
+.mechanics-time-status { margin: 8px 0; font-size: 12px; line-height: 1.5; }
+.mechanics-time-status:empty { margin: 0; }
+.mechanics-time-log .table-scroll { margin-top: 12px; }
+.mechanics-time-actions .text-button + .text-button { margin-inline-start: 10px; }

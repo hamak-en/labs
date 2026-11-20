@@ -1,4 +1,4 @@
-import { labs, equipmentLimits, limitNote, generatorRange } from './config';
+import { labs, equipmentLimits, limitNote, generatorRange, lampCurrentReadoutDigits } from './config';
 import { simulate, format, metal, semiconductor, diodeVoltage, bridgeResistance, bridgeModeLabel, capacitanceModes, capacitanceModeLabel } from './physics';
 import type { Params } from './physics';
 import type { Apparatus } from './storage';
@@ -38,8 +38,8 @@ function meter(x:number,y:number,w:number,h:number,label:string,value:number,uni
  const readout=!on?'живлення вимкнене':overrange?`${value<lowerLimit?'<':'>'} ${format(value<lowerLimit?lowerLimit:limit).replace('-','−')} ${unit}`:`${format(displayedValue,4)} ${unit}`;
  return `<g class="bench-meter" aria-label="${escape(label)}">${plate(x,y,w,h,label)}<rect x="${x+12}" y="${y+33}" width="${w-24}" height="${h-62}" rx="7" fill="#f9f7df" stroke="#b1bb9e"/><path d="M ${cx-Math.sin(Math.PI*.28)*r} ${cy-Math.cos(Math.PI*.28)*r} A ${r} ${r} 0 0 1 ${cx+Math.sin(Math.PI*.28)*r} ${cy-Math.cos(Math.PI*.28)*r}" fill="none" stroke="#bdc4a7"/>${marks}<path d="M ${cx} ${cy} L ${cx+Math.sin(p)*(r-5)} ${cy-Math.cos(p)*(r-5)}" stroke="#bd6146" stroke-width="2" stroke-linecap="round"/><circle cx="${cx}" cy="${cy}" r="4" fill="#344c3e"/>${overrange?text(cx,y+h-35,'Поза шкалою','overrange','middle'):''}${text(cx,y+h-10,readout,'readout','middle')}${jack(x+w*.25,y+h,red)}${jack(x+w*.75,y+h,black,true)}</g>`;
 }
-function digital(x:number,y:number,w:number,h:number,label:string,value:number,unit:string,on:boolean,limit=Infinity){
- const overrange=on&&Math.abs(value)>limit,readout=!on?'— — —':overrange?`${value<0?'< −':'> '}${format(limit)}`:format(value,4);
+function digital(x:number,y:number,w:number,h:number,label:string,value:number,unit:string,on:boolean,limit=Infinity,decimalFormat?:Intl.NumberFormat){
+ const overrange=on&&Math.abs(value)>limit,readout=!on?'— — —':overrange?`${value<0?'< −':'> '}${format(limit)}`:decimalFormat?.format(value)??format(value,4);
  return `<g class="bench-digital" aria-label="${escape(label)}">${plate(x,y,w,h,label)}<rect x="${x+16}" y="${y+39}" width="${w-32}" height="57" rx="5" fill="#c7d6b0" stroke="#859874"/>${text(x+w-26,y+76,readout,'lcd','end')}${text(x+w-23,y+90,unit,'small','end')}${overrange?text(x+w/2,y+125,'Поза шкалою','overrange','middle'):''}${jack(x+35,y+h,red)}${jack(x+w-35,y+h,black,true)}</g>`;
 }
 function sourceBox(s:BenchState,label='ДЖЕРЕЛО',voltage?:number,key?:string){const p=s.params;return `${plate(27,387,178,key?142:119,label)}${text(42,443,`${format(voltage??p.u??5)} V`,'source-reading')}${power(42,471,s.apparatus.power)}${key?knob(159,447,key,p[key],s.id,'Регулятор напруги',17,24,true):text(143,487,s.id===8?'50 Hz':'DC','small')}${jack(62,387,red)}${jack(170,387,black)}`;}
@@ -185,10 +185,14 @@ function acBench(s:BenchState){const p=s.params,on=s.apparatus.power&&s.apparatu
  ${plate(168,270,143,89,'РЕОСТАТ R')}${knob(238,324,'r',p.r,6,'Активний опір',17,14)}${jack(202,359,red)}${jack(282,359,black)}${coil(352,319,s.apparatus.core)}
  <g role="button" tabindex="0" data-bench-action="capacitor" aria-label="${s.mode==='rl'?'Підключити конденсатор':'Вилучити конденсатор'}" class="bench-interactive"><rect x="522" y="279" width="96" height="80" rx="9" fill="${s.mode==='rl'?'#dedfce':'#c2d0b4'}" stroke="#88977c" stroke-dasharray="${s.mode==='rl'?'5 4':'none'}"/>${text(570,297,'C','label','middle')}${capacitor(547,319,p.c)}<g opacity="${s.mode==='rl'?.4:1}"><path d="M 522 319 H 547 M 593 319 H 618" stroke="#4f6860" stroke-width="3" fill="none"/>${jack(522,319,black)}${jack(618,319,black)}</g>${text(570,380,s.mode==='rl'?'Натисни: додати C':'Натисни: вилучити C','small','middle')}</g>${text(352,453,'L = ? мГн','label')}${text(352,478,s.mode==='rl'?'Замкнене RL-коло':'Послідовне RLC-коло','small')}`;
 }
+const lampCurrentFormat = new Intl.NumberFormat('uk-UA', {maximumFractionDigits: lampCurrentReadoutDigits});
 function powerBench(s:BenchState){const p=s.params,a=s.apparatus,on=a.power&&a.connected,watts=simulate(7,p,s.mode).metrics[0].value;
+ const ammeter = a.selected===0
+  ? digital(249,299,174,153,'МІЛІАМПЕРМЕТР',p.i*1000,'мА',on,equipmentLimits.power.lampCurrent*1000,lampCurrentFormat)
+  : digital(249,299,174,153,'АМПЕРМЕТР',p.i,'А',on,equipmentLimits.power.coilCurrent);
  const glow=on&&a.selected===0;
  const lamp=(x:number)=>`<g><circle cx="${x}" cy="360" r="43" fill="${glow?'#f3ca67':'#cfdbbf'}" opacity="${glow?Math.max(.08,Math.min(.6,watts/35)):.1}"/><path d="M ${x-17} 368 C ${x-58} 306 ${x+58} 306 ${x+17} 368 v 14 h -34 Z" fill="${glow?'url(#bulb)':'#e1e4cf'}" stroke="#9b9f7f" stroke-width="2"/><path d="M ${x-10} 367 l 3 -16 7 10 7 -10 3 16" fill="none" stroke="${glow?'#fff3c0':'#8d8c70'}" stroke-width="2"/><rect x="${x-18}" y="380" width="36" height="22" rx="3" fill="url(#metal)" stroke="#6f7d6d"/><path d="M ${x-17} 385 h 34 m -34 6 h 34" stroke="#738575"/><rect x="${x-26}" y="402" width="52" height="13" rx="4" fill="#5b6c55"/></g>`;
- return `${sourceBox(s,'ЛАТР · 50 Hz',p.u,'u')}${meter(220,59,181,164,'ВАТМЕТР W',watts,'Вт',on,equipmentLimits.power.watts)}${digital(571,63,172,160,'ВОЛЬТМЕТР',p.u,'В',on,equipmentLimits.power.voltage)}${digital(249,299,174,153,a.selected===0?'МІЛІАМПЕРМЕТР':'АМПЕРМЕТР',a.selected===0?p.i*1000:p.i,a.selected===0?'мА':'А',on,a.selected===0?equipmentLimits.power.lampCurrent*1000:equipmentLimits.power.coilCurrent)}
+ return `${sourceBox(s,'ЛАТР · 50 Hz',p.u,'u')}${meter(220,59,181,164,'ВАТМЕТР W',watts,'Вт',on,equipmentLimits.power.watts)}${digital(571,63,172,160,'ВОЛЬТМЕТР',p.u,'В',on,equipmentLimits.power.voltage)}${ammeter}
  <circle cx="442" cy="347" r="3.5" fill="${a.connected?red:'#9dada1'}"/>
  <g role="button" tabindex="0" data-bench-action="load" aria-label="Перемкнути навантаження" class="bench-interactive">${text(510,279,'НАВАНТАЖЕННЯ','small','middle')}${plate(460,292,100,120,'')}<path d="M 460 347 h 24 M 530 315 h 30 M 510 390 v 22" fill="none" stroke="#6f6543" stroke-width="3"/><circle cx="530" cy="315" r="5" fill="#756d4a"/><circle cx="510" cy="390" r="5" fill="#756d4a"/><path d="M 484 347 L ${a.selected===0?'530 315':'510 390'}" stroke="#916a39" stroke-width="5" stroke-linecap="round"/><circle cx="484" cy="347" r="5" fill="#665d45"/>${jack(460,347,red)}${jack(560,315,red)}${jack(510,412,red)}</g>
  ${text(658,300,'Лампи','small','middle')}${lamp(618)}${lamp(698)}${jack(592,408,red)}${jack(644,408,black)}${jack(672,408,black)}${jack(724,408,black)}

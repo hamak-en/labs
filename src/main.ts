@@ -1,4 +1,9 @@
 import './style.css';
+import './mechanics/style.css';
+import { asset, electricityGuide, escapeHtml as esc, labLayout, showFigure, tabNames } from './lab-layout';
+import { mechanicsContent, mechanicsFigure, mechanicsLabs, mechanicsMode, mountMechanics } from './mechanics';
+import { freshExperiment } from './mechanics/model';
+import type { Mode } from './mechanics/model';
 import { renderFormulas } from './formulas';
 import { renderUncertaintyHelp } from './uncertainty';
 import { questionAnswers } from './answers';
@@ -14,23 +19,51 @@ import type { Measurement } from './storage';
 import { applyVariant, validVariant, variantNumbers, variantLabel, hasVariants } from './variants';
 
 const $=<T extends HTMLElement=HTMLElement>(s:string)=>document.querySelector<T>(s)!;
-const asset=(path:string)=>import.meta.env.BASE_URL+path;
-const esc=(s:string)=>s.replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;');
-const tabNames=['experiment','theory','questions','equipment'] as const;
-const state=restore();let lab:Lab=labs[0];let tab='experiment';let visual:Workbench|undefined;let generation=0;let playing=!matchMedia('(prefers-reduced-motion: reduce)').matches;
+const state=restore();let lab:Lab=labs[0];let tab='experiment';let visual:Workbench|undefined;let playing=!matchMedia('(prefers-reduced-motion: reduce)').matches;
 let toastTimer:ReturnType<typeof setTimeout>;
+let mechanics: Mode | undefined;
+let unmountMechanics: (() => void) | undefined;
+let lastElectricity = '#/lab/1';
+let lastMechanics = '#/mechanics/1';
+let focusAfterRoute = '';
 let powerConductance=state.labs[7].params.u>0?state.labs[7].params.i/state.labs[7].params.u:.3/24;
 const current=()=>state.labs[lab.id];
 
 function persist(){save(state);}
 function toast(message:string){const e=$('#toast');e.innerHTML=`<span>${esc(message)}</span>`;e.hidden=false;clearTimeout(toastTimer);toastTimer=setTimeout(()=>{e.hidden=true;},6000);}
-function route(){if(location.hash==='#workspace'){$('#workspace')?.focus();return;}const n=Number(location.hash.match(/^#\/lab\/(\d+)$/)?.[1]??1);lab=labs.find(l=>l.id===n)??labs[0];tab='experiment';render();}
+function setSidebarOpen(open: boolean) {
+ $('#sidebar').classList.toggle('open', open);
+ $('#menu').setAttribute('aria-expanded', String(open));
+}
+function route(){
+ if(location.hash==='#workspace'){$('#workspace')?.focus();return;}
+ const match=location.hash.match(/^#\/mechanics(?:\/(\d+)(?:\/([a-z]+))?)?$/);
+ const keepSidebarOpen=focusAfterRoute==='#lab-subject'&&$('#sidebar')?.classList.contains('open');
+ tab='experiment';
+ visual?.dispose();visual=undefined;
+ unmountMechanics?.();unmountMechanics=undefined;
+ if(match){
+  mechanics=mechanicsMode(Number(match[1]??1),match[2]);
+  lastMechanics=`#/mechanics/${mechanics.lab}/${mechanics.key}`;
+  document.title='Механіка і молекулярна фізика — інтерактивний практикум';
+  const experiment=freshExperiment(mechanics);
+  $('#app').innerHTML=labLayout('mechanics',mechanicsLabs,mechanics.lab,mechanicsLabs[mechanics.lab-1].short,mechanicsContent(mechanics,experiment));
+  unmountMechanics=mountMechanics(mechanics,experiment);
+ }else{
+  mechanics=undefined;
+  const n=Number(location.hash.match(/^#\/lab\/(\d+)$/)?.[1]??1);
+  lab=labs.find(l=>l.id===n)??labs[0];
+  lastElectricity=`#/lab/${lab.id}`;
+  document.title='Електрика — інтерактивний практикум';
+  render();
+ }
+ if(keepSidebarOpen)setSidebarOpen(true);
+ if(focusAfterRoute){$(focusAfterRoute)?.focus();focusAfterRoute='';}
+}
 function render(){
- ++generation;visual?.dispose();visual=undefined;playing=!matchMedia('(prefers-reduced-motion: reduce)').matches;
+ playing=!matchMedia('(prefers-reduced-motion: reduce)').matches;
  const s=current(),src=source[lab.id-1];
- $('#app').innerHTML=`<a href="#workspace" class="skip-link">Перейти до досліду</a>
- <aside id="sidebar" class="sidebar"><div class="sidebar-heading">ТВОЯ ЛАБОРАТОРІЯ <span>08</span></div><nav aria-label="Лабораторні роботи">${labs.map(l=>`<a href="#/lab/${l.id}" class="nav-item ${l.id===lab.id?'active':''}" ${l.id===lab.id?'aria-current="page"':''}><span class="nav-number">${String(l.id).padStart(2,'0')}</span><span>${esc(l.short)}</span>${l.id===lab.id?'<span class="nav-arrow">↗</span>':''}</a>`).join('')}</nav></aside>
- <main id="workspace" tabindex="-1"><header class="topbar"><div class="tabs" role="tablist" aria-label="Розділи лабораторної"><button id="tab-experiment" role="tab" aria-selected="true" aria-controls="panel-experiment" data-tab="experiment">Експеримент<span>01</span></button><button id="tab-theory" role="tab" aria-selected="false" aria-controls="panel-theory" tabindex="-1" data-tab="theory">Теорія<span>02</span></button><button id="tab-questions" role="tab" aria-selected="false" aria-controls="panel-questions" tabindex="-1" data-tab="questions">Контрольні питання<span>03</span></button><button id="tab-equipment" role="tab" aria-selected="false" aria-controls="panel-equipment" tabindex="-1" data-tab="equipment">Обладнання<span>04</span></button></div><div class="top-actions"><a class="source-link" href="${asset('Електрика.%20Лабораторні%20роботи.pdf')}" target="_blank" rel="noopener">Методичка <span>↗</span></a><button id="menu" class="menu-button" aria-expanded="false" aria-controls="sidebar">Роботи ☰</button></div></header><div class="content-body"><h1 class="sr-only">${esc(lab.short)}</h1>
+ $('#app').innerHTML=labLayout('electricity',labs,lab.id,lab.short,`
  <section id="panel-experiment" role="tabpanel" aria-labelledby="tab-experiment"><div class="experiment-grid">
  <section class="apparatus-card" aria-label="Інтерактивна лабораторна установка"><p class="bench-pan-hint">На телефоні посунь стенд убік, щоб побачити всі прилади.</p><div class="bench-viewport"><div id="bench" class="bench-host" data-backend="loading"></div></div></section>
  <section class="controls-card"><div class="section-title"><h2>Параметри досліду</h2><button data-action="reset-params" class="text-button">Скинути ↺</button></div><p class="muted small">Перетягни ручку на стенді або введи значення.</p>${hasVariants(lab.id)?`<div class="variant-control"><label for="lab-variant">Варіант досліду</label><select id="lab-variant">${!validVariant(s.variant)?'<option value="" selected disabled>Попередня установка</option>':''}${variantNumbers.map(v=>`<option value="${v}" ${s.variant===v?'selected':''}>${variantLabel(v)}</option>`).join('')}</select></div>`:''}<div class="controls">${lab.fields.filter(f=>!f.hidden).map(f=>`<div class="control" data-control="${f.key}" title="${esc(limitNote(lab.id,f.key))}"><label for="number-${f.key}">${esc(f.label)}<span>${esc(f.unit)}</span></label><div class="control-inputs">${f.choices?`<select id="number-${f.key}" data-param="${f.key}" aria-label="${esc(f.label)}, ${esc(f.unit)}">${f.choices.map(value=>`<option value="${value}" ${s.params[f.key]===value?'selected':''}>${format(value)} ${esc(f.unit)}</option>`).join('')}</select>`:`<input id="range-${f.key}" type="range" data-param="${f.key}" min="${f.min}" max="${f.max}" step="${f.step}" value="${s.params[f.key]}" aria-label="${esc(f.label)}, повзунок"><input id="number-${f.key}" type="number" inputmode="decimal" data-param="${f.key}" min="${f.min}" max="${f.max}" step="${f.discrete?f.step:'any'}" value="${s.params[f.key]}" aria-label="${esc(f.label)}, ${esc(f.unit)}">`}</div></div>`).join('')}</div><p id="param-error" class="error-message" role="status" hidden></p>
@@ -42,8 +75,8 @@ function render(){
  </section>
  <section id="panel-theory" role="tabpanel" aria-labelledby="tab-theory" hidden><div class="theory-grid"><article class="theory-card"><p class="eyebrow">СУТЬ ДОСЛІДУ</p><h2>${esc(lab.short)}</h2><p>${esc(lab.principle)}</p><div class="theory-formula">${renderFormulas(lab.formula)}</div><h3>Як виконати роботу</h3><ol class="steps">${lab.steps.map((step,i)=>`<li><span>${String(i+1).padStart(2,'0')}</span><p>${esc(step)}</p></li>`).join('')}</ol>${renderUncertaintyHelp(lab.id)}<button class="secondary-button theory-equipment-link" data-tab="equipment">Характеристики обладнання</button><div class="source-note">Опис за методичними вказівками ОНУ, 2014, с. ${src.pages}.</div></article><div class="figures"><p class="eyebrow">СХЕМИ З ОРИГІНАЛУ</p>${src.figures.map((f,i)=>`<figure><button data-image="${i}" aria-label="Збільшити: ${esc(f.alt)}"><img src="${asset(f.url)}" alt="${esc(f.alt)}" loading="lazy"></button><figcaption>${esc(f.alt)}</figcaption></figure>`).join('')}</div></div></section>
  <section id="panel-questions" role="tabpanel" aria-labelledby="tab-questions" hidden><div class="questions-heading"><p class="eyebrow">ПІДГОТОВКА ДО ЗАХИСТУ</p></div><div class="questions">${src.questions.map((q,i)=>`<details><summary><span class="question-number">${String(i+1).padStart(2,'0')}</span><span>${esc(q)}</span><span class="question-plus">＋</span></summary><div class="question-answer">${questionAnswers[lab.id]![i]!.map(block=>'text' in block?`<p>${esc(block.text)}</p>`:renderFormulas(block.equations)).join('')}</div></details>`).join('')}</div></section>
- <section id="panel-equipment" role="tabpanel" aria-labelledby="tab-equipment" hidden>${renderEquipment(lab.id,src.pages,asset('Електрика.%20Лабораторні%20роботи.pdf'))}</section>
- </div></main><div id="toast" role="status" hidden></div><dialog id="image-dialog"><button class="dialog-close" aria-label="Закрити зображення">×</button><img alt=""><p></p></dialog>`;
+ <section id="panel-equipment" role="tabpanel" aria-labelledby="tab-equipment" hidden>${renderEquipment(lab.id,src.pages,asset(electricityGuide))}</section>
+ `);
  updateModel();
  visual=new Workbench($('#bench'),benchState(),changeBenchParam,benchAction,t=>{current().apparatus.temperature=t;updateModel();},backend=>$('#bench').dataset.backend=backend);
 }
@@ -100,6 +133,7 @@ function exportRows(){const rows=current().rows;if(!rows.length)return;
  downloadCSV(`lab_${lab.id}-measurements.csv`,headers,cells);toast('Збережені виміри експортовано.');
 }
 document.addEventListener('input',event=>{
+ if(mechanics)return;
  const el=event.target as HTMLInputElement|HTMLSelectElement;
  if(el.id==='lab-variant'){const v=Number(el.value);if(!hasVariants(lab.id)||!validVariant(v))return;current().variant=v;applyVariant(lab.id,v,current().params,current().apparatus);if(lab.id===8)current().params.limit=300;syncParams();persist();updateModel();return;}
  if(el.dataset.param){const f=lab.fields.find(f=>f.key===el.dataset.param)!;const v=el.value===''?NaN:Number(el.value),max=lab.id===7&&f.key==='i'?currentLimit():f.max;
@@ -107,15 +141,34 @@ document.addEventListener('input',event=>{
   el.classList.remove('invalid');$('#param-error').hidden=true;current().params[f.key]=v;for(const other of document.querySelectorAll<HTMLInputElement|HTMLSelectElement>(`[data-param="${f.key}"]`))if(other!==el)other.value=String(v);persist();updateModel();
  }
 });
+document.addEventListener('change',event=>{
+ const select=event.target as HTMLSelectElement;
+ if(select.id==='lab-subject'){
+  focusAfterRoute='#lab-subject';
+  location.hash=select.value==='mechanics'?lastMechanics:lastElectricity;
+ }else if(select.id==='mech-method')focusAfterRoute='#mech-method';
+});
 document.addEventListener('click',event=>{
  const b=(event.target as HTMLElement).closest<HTMLElement>('button');if(!b)return;
- if(b.id==='menu'){$('#sidebar').classList.toggle('open');b.setAttribute('aria-expanded',String($('#sidebar').classList.contains('open')));return;}
+ if(b.id==='menu'){
+  const open=!$('#sidebar').classList.contains('open');
+  setSidebarOpen(open);
+  if(open&&event.detail===0)$('#lab-subject').focus();
+  return;
+ }
  if(b.dataset.tab){selectTab(b.dataset.tab);if(b.getAttribute('role')!=='tab')$(`#tab-${b.dataset.tab}`).focus();return;}
+ if(b.classList.contains('dialog-close')){$<HTMLDialogElement>('#image-dialog').close();return;}
+ if(mechanics){
+  if(b.dataset.mechanicsImage!==undefined){
+   const figure=mechanicsFigure(mechanics.lab,Number(b.dataset.mechanicsImage));
+   if(figure)showFigure(figure.file,figure.caption);
+  }
+  return;
+ }
  if(b.dataset.mode){current().mode=b.dataset.mode;if(lab.id===4)current().apparatus.selected=(current().params.u<0)!==(b.dataset.mode==='reverse')?1:0;persist();updateModel();return;}
  if(b.dataset.preset){current().apparatus.selected=b.dataset.preset==='lamp'?0:1;if(validVariant(current().variant))applyVariant(7,current().variant!,current().params,current().apparatus);else current().params.phase=b.dataset.preset==='lamp'?0:60;syncParams();persist();updateModel();return;}
  if(b.dataset.frequency){current().params.f=Number(b.dataset.frequency);current().mode='xy';syncParams();persist();updateModel();return;}
- if(b.dataset.image){const f=source[lab.id-1].figures[Number(b.dataset.image)];const d=$<HTMLDialogElement>('#image-dialog');d.querySelector('img')!.src=asset(f.url);d.querySelector('img')!.alt=f.alt;d.querySelector('p')!.textContent=f.alt;d.showModal();return;}
- if(b.classList.contains('dialog-close')){$<HTMLDialogElement>('#image-dialog').close();return;}
+ if(b.dataset.image!==undefined){const f=source[lab.id-1].figures[Number(b.dataset.image)];if(f)showFigure(f.url,f.alt);return;}
  switch(b.dataset.action){
   case 'reset-params':{const s=current();s.apparatus=freshApparatus(lab.id);s.params=Object.fromEntries(lab.fields.map(f=>[f.key,f.value]));s.variant=hasVariants(lab.id)?s.variant??1:undefined;if(validVariant(s.variant)){applyVariant(lab.id,s.variant,s.params,s.apparatus);$<HTMLSelectElement>('#lab-variant').value=String(s.variant);}syncParams();persist();updateModel();break;}
   case 'export':exportRows();break;
